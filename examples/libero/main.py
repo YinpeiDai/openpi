@@ -1,7 +1,9 @@
 import collections
 import dataclasses
+import json
 import logging
 import math
+import os
 import pathlib
 
 import imageio
@@ -40,7 +42,7 @@ class Args:
     #################################################################################################################
     # Utils
     #################################################################################################################
-    video_out_path: str = "data/libero/videos"  # Path to save videos
+    save_path: str = "data"  # Path to save videos
 
     seed: int = 7  # Random Seed (for reproducibility)
 
@@ -55,8 +57,12 @@ def eval_libero(args: Args) -> None:
     num_tasks_in_suite = task_suite.n_tasks
     logging.info(f"Task suite: {args.task_suite_name}")
 
-    pathlib.Path(args.video_out_path).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(args.save_path).mkdir(parents=True, exist_ok=True)
 
+    save_dir = os.path.join(args.save_path, args.task_suite_name, "pi0_fast_libero")
+    os.makedirs(save_dir, exist_ok=True)
+    
+    
     if args.task_suite_name == "libero_spatial":
         max_steps = 220  # longest training demo has 193 steps
     elif args.task_suite_name == "libero_object":
@@ -84,6 +90,8 @@ def eval_libero(args: Args) -> None:
         # Initialize LIBERO environment and task description
         env, task_description = _get_libero_env(task, LIBERO_ENV_RESOLUTION, args.seed)
 
+        results = {"task_id": task_id, "task_description":task_description, "data": []} 
+
         # Start episodes
         task_episodes, task_successes = 0, 0
         for episode_idx in tqdm.tqdm(range(args.num_trials_per_task)):
@@ -92,6 +100,7 @@ def eval_libero(args: Args) -> None:
             # Reset environment
             env.reset()
             action_plan = collections.deque()
+            success = False
 
             # Set initial states
             obs = env.set_init_state(initial_states[episode_idx])
@@ -152,6 +161,7 @@ def eval_libero(args: Args) -> None:
                     # Execute action in environment
                     obs, reward, done, info = env.step(action.tolist())
                     if done:
+                        success = True
                         task_successes += 1
                         total_successes += 1
                         break
@@ -167,23 +177,33 @@ def eval_libero(args: Args) -> None:
             # Save a replay video of the episode
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
-            imageio.mimwrite(
-                pathlib.Path(args.video_out_path) / f"rollout_{task_segment}_{suffix}.mp4",
-                [np.asarray(x) for x in replay_images],
-                fps=10,
-            )
+            
+            if episode_idx < 2:
+                imageio.mimwrite(
+                    os.path.join(save_dir, f"{task_segment}_ep{episode_idx}_{suffix}.mp4"),
+                    [np.asarray(x) for x in replay_images],
+                    fps=30,
+                )
+                
+            results["data"].append({"episode": episode_idx, "success": success})
 
             # Log current results
             logging.info(f"Success: {done}")
             logging.info(f"# episodes completed so far: {total_episodes}")
             logging.info(f"# successes: {total_successes} ({total_successes / total_episodes * 100:.1f}%)")
 
+        processed_task_description = task_description.lower().replace(" ", "_").replace("\n", "_").replace(".", "_")
+        json_name = f"task{task_id}-seed{args.seed}-{processed_task_description}.json"
+        with open(os.path.join(save_dir, json_name), "w") as f:
+            json.dump(results, f, indent=2)
+            
         # Log final results
         logging.info(f"Current task success rate: {float(task_successes) / float(task_episodes)}")
         logging.info(f"Current total success rate: {float(total_successes) / float(total_episodes)}")
 
     logging.info(f"Total success rate: {float(total_successes) / float(total_episodes)}")
     logging.info(f"Total episodes: {total_episodes}")
+    env.close()
 
 
 def _get_libero_env(task, resolution, seed):
