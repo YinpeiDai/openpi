@@ -46,6 +46,7 @@ class Args:
 
     seed: int = 7  # Random Seed (for reproducibility)
     
+    model_name: str = "pi0_fast_libero"             # Model name
     task_start_id: int = 0                          # Start task ID
     task_end_id: int = 0                            # End task ID
 
@@ -62,7 +63,7 @@ def eval_libero(args: Args) -> None:
 
     pathlib.Path(args.save_path).mkdir(parents=True, exist_ok=True)
 
-    save_dir = os.path.join(args.save_path, args.task_suite_name, "pi0_fast_libero")
+    save_dir = os.path.join(args.save_path, args.task_suite_name, args.model_name)
     os.makedirs(save_dir, exist_ok=True)
     
     
