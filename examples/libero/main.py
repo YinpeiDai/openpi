@@ -180,7 +180,7 @@ def eval_libero(args: Args) -> None:
             
             if episode_idx < 2:
                 imageio.mimwrite(
-                    os.path.join(save_dir, f"{task_segment}_ep{episode_idx}_{suffix}.mp4"),
+                    os.path.join(save_dir, f"task{task_id}-seed{args.seed}-{task_segment}_ep{episode_idx}_{suffix}.mp4"),
                     [np.asarray(x) for x in replay_images],
                     fps=30,
                 )
