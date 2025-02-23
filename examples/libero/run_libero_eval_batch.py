@@ -65,6 +65,8 @@ def eval_libero(args: Args) -> None:
 
     save_dir = os.path.join(args.save_path, args.task_suite_name, args.model_name)
     os.makedirs(save_dir, exist_ok=True)
+    save_dir_video = os.path.join(save_dir, "video")
+    os.makedirs(save_dir_video, exist_ok=True)
     
     
     if args.task_suite_name == "libero_spatial":
@@ -186,9 +188,9 @@ def eval_libero(args: Args) -> None:
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
             
-            if episode_idx < 2:
+            if episode_idx < 100:
                 imageio.mimwrite(
-                    os.path.join(save_dir, f"task{task_id}-seed{args.seed}-{task_segment}_ep{episode_idx}_{suffix}.mp4"),
+                    os.path.join(save_dir, "video", f"task{task_id}-seed{args.seed}-{task_segment}_ep{episode_idx}_{suffix}.mp4"),
                     [np.asarray(x) for x in replay_images],
                     fps=30,
                 )
