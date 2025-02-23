@@ -43,6 +43,8 @@ class Args:
     # Utils
     #################################################################################################################
     save_path: str = "data"  # Path to save videos
+    
+    model_name_dir: str = "pi0_fast_libero" 
 
     seed: int = 7  # Random Seed (for reproducibility)
 
@@ -57,9 +59,7 @@ def eval_libero(args: Args) -> None:
     num_tasks_in_suite = task_suite.n_tasks
     logging.info(f"Task suite: {args.task_suite_name}")
 
-    pathlib.Path(args.save_path).mkdir(parents=True, exist_ok=True)
-
-    save_dir = os.path.join(args.save_path, args.task_suite_name, "pi0_fast_libero")
+    save_dir = os.path.join(args.save_path, args.task_suite_name, args.model_name_dir)
     os.makedirs(save_dir, exist_ok=True)
     
     
@@ -236,4 +236,4 @@ def _quat2axisangle(quat):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    tyro.cli(eval_libero)
+    eval_libero(tyro.cli(Args))
