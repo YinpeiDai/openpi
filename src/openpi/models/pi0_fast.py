@@ -160,23 +160,23 @@ class Pi0FAST(_model.BaseModel):
         # embed images
         for name in obs.images:
             image_token_embeddings, _ = self.PaliGemma.img(obs.images[name], train=False)
-
+            # (bs, 256, 2048)
             token_embeddings.append(image_token_embeddings)
             input_mask.append(
                 einops.repeat(
                     obs.image_masks[name],
                     "b -> b s",
                     s=image_token_embeddings.shape[1],
-                )
+                ) # (bs, 256)
             )
             # image tokens attend to each other --> AR mask = 0
-            ar_mask.append(0 * input_mask[-1])
+            ar_mask.append(0 * input_mask[-1]) # (bs, 256)
 
         # add tokenized inputs
         assert obs.tokenized_prompt is not None, "Tokenized prompt is required"
         assert obs.tokenized_prompt_mask is not None, "Tokenized prompt mask is required"
         assert obs.token_ar_mask is not None, "Token auto-regressive mask is required"
-        tokenized_inputs_embeddings = self.PaliGemma.llm(obs.tokenized_prompt, embed_only=True)
+        tokenized_inputs_embeddings = self.PaliGemma.llm(obs.tokenized_prompt, embed_only=True) # (bs, max_token_len, 2048)
         token_embeddings.append(tokenized_inputs_embeddings)
         input_mask.append(obs.tokenized_prompt_mask)
         ar_mask.append(obs.token_ar_mask)
@@ -259,10 +259,11 @@ class Pi0FAST(_model.BaseModel):
         prefix_logits, kv_cache, _ = self.PaliGemma.llm(
             embedded_prefix=prefix_token_embeddings, mask=prefix_attn_mask, positions=prefix_positions, decode=True
         )
+        # prefix_logits: (bs, prefill_size + max_decoding_steps, vocab_size), e.g., [2,1018(256*3+250),257152]
 
         # prepare decoding -- final logit decodes the first token
-        last_logit = prefix_logits[:, -1:]
-        output_tokens = jnp.zeros((last_logit.shape[0], max_decoding_steps))
+        last_logit = prefix_logits[:, -1:] # (bs, 1, vocab_size)
+        output_tokens = jnp.zeros((last_logit.shape[0], max_decoding_steps)) # (bs, max_decoding_steps)
 
         def step(carry):
             last_logit, output_tokens, cache, _, step = carry

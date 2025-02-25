@@ -3,7 +3,7 @@ import dataclasses
 import re
 from typing import Protocol, TypeAlias, TypeVar, runtime_checkable
 
-import flax.traverse_util as traverse_util
+import flax.traverse_util as traverse_util # working with nested dictionaries
 import jax
 import numpy as np
 from openpi_client import image_tools
