@@ -42,7 +42,7 @@ class Args:
     #################################################################################################################
     # Utils
     #################################################################################################################
-    save_path: str = "/home/daiyp/openpi/data"  # Path to save videos
+    save_path: str = "/home/daiyp/openpi/runs/evaluation"  # Path to save videos
 
     seed: int = 7  # Random Seed (for reproducibility)
     
@@ -141,7 +141,7 @@ def eval_libero(args: Args) -> None:
                     )
 
                     # Save preprocessed image for replay video
-                    replay_images.append(img)
+                    replay_images.append(np.concatenate((img, wrist_img), axis=1))
 
                     if not action_plan:
                         # Finished executing previous action chunk -- compute new chunk
