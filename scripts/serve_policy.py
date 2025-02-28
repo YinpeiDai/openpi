@@ -54,9 +54,6 @@ class Args:
 
     # Specifies how to load the policy. If not provided, the default policy for the environment will be used.
     policy: Checkpoint | Default = dataclasses.field(default_factory=Default)
-    
-    policy_config: str | None = None
-    policy_dir: str | None = None
 
 
 # Default checkpoints that should be used for each environment.
@@ -96,10 +93,6 @@ def create_default_policy(env: EnvMode, *, default_prompt: str | None = None) ->
 
 def create_policy(args: Args) -> _policy.Policy:
     """Create a policy from the given arguments."""
-    if args.policy_config and args.policy_dir:
-        return _policy_config.create_trained_policy(
-            _config.get_config(args.policy_config), args.policy_dir, default_prompt=args.default_prompt
-        )
     match args.policy:
         case Checkpoint():
             return _policy_config.create_trained_policy(

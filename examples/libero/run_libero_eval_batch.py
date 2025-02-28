@@ -188,7 +188,7 @@ def eval_libero(args: Args) -> None:
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
             
-            if episode_idx < 10:
+            if episode_idx < 5:
                 imageio.mimwrite(
                     os.path.join(save_dir, "video", f"task{task_id}-seed{args.seed}-{task_segment}_ep{episode_idx}_{suffix}.mp4"),
                     [np.asarray(x) for x in replay_images],
