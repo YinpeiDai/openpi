@@ -357,6 +357,8 @@ class TrainConfig:
     # eg. if total device is 4 and fsdp devices is 2; then the model will shard to 2 devices and run
     # data parallel between 2 groups of devices.
     fsdp_devices: int = 1
+    
+    grad_accum_steps: int = 1
 
     @property
     def assets_dirs(self) -> pathlib.Path:
@@ -376,6 +378,15 @@ class TrainConfig:
         return nnx.All(nnx.Param, nnx.Not(self.freeze_filter))
 
     def __post_init__(self) -> None:
+        if self.grad_accum_steps > 1:
+            if self.batch_size % self.grad_accum_steps != 0:
+                raise ValueError(f"Global Batch size must be divisible by grad_accum_steps. Got {self.batch_size} over {self.grad_accum_steps} steps")
+            object.__setattr__(
+                self,
+                "batch_size",
+                self.batch_size // self.grad_accum_steps
+            )
+            logging.info(f"Batch size adjusted to {self.batch_size} since grad_accum_steps is {self.grad_accum_steps}")
         if self.resume and self.overwrite:
             raise ValueError("Cannot resume and overwrite at the same time.")
 
