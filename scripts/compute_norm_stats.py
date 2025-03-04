@@ -37,8 +37,11 @@ def create_dataset(config: _config.TrainConfig) -> tuple[_config.DataConfig, _da
     return data_config, dataset
 
 
-def main(config_name: str, max_frames: int | None = None):
+def main(config_name: str, lerobot_repo_id: str | None = None, max_frames: int | None = None):
     config = _config.get_config(config_name)
+    if lerobot_repo_id is not None:
+        object.__setattr__(config.data, "repo_id", lerobot_repo_id)
+    
     data_config, dataset = create_dataset(config)
 
     num_frames = len(dataset)

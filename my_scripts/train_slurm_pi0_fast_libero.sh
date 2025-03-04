@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=pi0_fast_libero_finetune
-#SBATCH --output=/home/daiyp/openpi/logs/pi0_fast_libero_finetune-%j.out
+#SBATCH --output=/home/daiyp/openpi/runs/logs/pi0_fast_libero_finetune-%j.out
 #SBATCH --gres=gpu:4
 #SBATCH --time=12-00:00:00
 #SBATCH --account=chaijy2

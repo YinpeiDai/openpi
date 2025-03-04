@@ -6,7 +6,7 @@ import subprocess
 # SLURM job parameters
 job_script = """#!/bin/bash
 #SBATCH --job-name={model_name}_eval
-#SBATCH --output=/home/daiyp/openpi/logs/{model_name}_eval_{task_suite_name}_taskrange_{task_start_id}-{task_end_id}-%j.out
+#SBATCH --output=/home/daiyp/openpi/runs/logs/{model_name}_eval_{task_suite_name}_taskrange_{task_start_id}-{task_end_id}-%j.out
 #SBATCH --gres=gpu:1
 #SBATCH --time=5-00:00:00
 #SBATCH --account=chaijy2

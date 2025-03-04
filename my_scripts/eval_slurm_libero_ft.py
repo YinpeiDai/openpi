@@ -6,7 +6,7 @@ import subprocess
 # SLURM job parameters
 job_script = """#!/bin/bash
 #SBATCH --job-name={model_name}_eval
-#SBATCH --output=/home/daiyp/openpi/logs/{model_name}_eval_{task_suite_name}_taskrange_{task_start_id}-{task_end_id}-ft%j.out
+#SBATCH --output=/home/daiyp/openpi/runs/logs/{model_name}_eval_{task_suite_name}_taskrange_{task_start_id}-{task_end_id}-ft-%j.out
 #SBATCH --gres=gpu:1
 #SBATCH --time=5-00:00:00
 #SBATCH --account=chaijy2
@@ -32,7 +32,7 @@ tmux send-keys "/nfs/turbo/coe-chaijy/daiyp/micromamba_gl/envs/openpi/bin/python
 
 sleep 2
 
-/nfs/turbo/coe-chaijy/daiyp/micromamba_gl/envs/openpi-libero/bin/python  /home/daiyp/openpi/examples/libero/run_libero_eval_batch.py --task_suite_name {task_suite_name}  --task_start_id {task_start_id} --task_end_id {task_end_id} --port {port_num} --model_name pi0-fast-ckpt{ckpt_id}-test 
+/nfs/turbo/coe-chaijy/daiyp/micromamba_gl/envs/openpi-libero/bin/python  /home/daiyp/openpi/examples/libero/run_libero_eval_batch.py --task_suite_name {task_suite_name}  --task_start_id {task_start_id} --task_end_id {task_end_id} --port {port_num} --model_name pi0-fast-ckpt{ckpt_id}
 """
 
 interval = 1 # run number of tasks in the batch python
