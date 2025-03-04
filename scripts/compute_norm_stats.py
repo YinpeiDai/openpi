@@ -41,6 +41,7 @@ def main(config_name: str, lerobot_repo_id: str | None = None, max_frames: int |
     config = _config.get_config(config_name)
     if lerobot_repo_id is not None:
         object.__setattr__(config.data, "repo_id", lerobot_repo_id)
+        object.__setattr__(config.data.base_config, "local_files_only", True)
     
     data_config, dataset = create_dataset(config)
 
