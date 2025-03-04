@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=pi0_libero_ft
-#SBATCH --output=/home/daiyp/openpi/runs/logs/pi0_libero_ft-bs32-%j.out
+#SBATCH --job-name=pi0_libero_ft-large_crosshair_dynamic_default_color
+#SBATCH --output=/home/daiyp/openpi/runs/logs/pi0_libero_ft-large_crosshair_dynamic_default_color-%j.out
 #SBATCH --gres=gpu:4
 #SBATCH --time=12-00:00:00
 #SBATCH --account=chaijy2

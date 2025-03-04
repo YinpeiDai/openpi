@@ -5,6 +5,10 @@ CUDA_VISIBLE_DEVICES=1 uv run scripts/serve_policy.py --env LIBERO_FAST  --port 
 
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --port 8012  --policy_config pi0_fast_libero --policy_dir /nfs/turbo/coe-chaijy-unreplicated/daiyp/openpi/ckpts/pi0_fast_libero/pi0_fast_libero_finetune_bs32/30000
 
+
+
+
+
 # client
 source examples/libero/.venv/bin/activate
 export PYTHONPATH=$PYTHONPATH:$PWD/third_party/libero

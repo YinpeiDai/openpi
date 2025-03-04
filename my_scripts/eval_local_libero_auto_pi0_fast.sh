@@ -1,13 +1,12 @@
 cd /home/daiyp/openpi
 
 TASK_SUITE_NAME=libero_object
-MODEL_NAME=pi0_ckpt30000
+MODEL_NAME=pi0-fast-ckpt30000
 DEVICE=0
 PORT=8001
-POLICY_CFG=pi0_fast_libero
 CKPT_DIR=/nfs/turbo/coe-chaijy-unreplicated/daiyp/openpi/ckpts/pi0_fast_libero/pi0_fast_libero_finetune_bs32/30000
 
-SESSION_NAME="Eval-${MODEL_NAME}-${TASK_SUITE_NAME}"
+SESSION_NAME="Eval-Pi0fast-${MODEL_NAME}-${TASK_SUITE_NAME}"
 
 tmux has-session -t $SESSION_NAME 2>/dev/null
 if [ $? != 0 ]; then
@@ -18,7 +17,7 @@ fi
 sleep 2
 tmux new-window -n server
 tmux send-keys "source .venv/bin/activate" Enter
-tmux send-keys "XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=${DEVICE} uv run scripts/serve_policy.py --port ${PORT}  policy:checkpoint --policy.config=${POLICY_CFG} --policy.dir=${CKPT_DIR}" Enter
+tmux send-keys "XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=${DEVICE} uv run scripts/serve_policy.py --port ${PORT}  policy:checkpoint --policy.config=pi0_fast_libero --policy.dir=${CKPT_DIR}" Enter
 
 
 sleep 2
