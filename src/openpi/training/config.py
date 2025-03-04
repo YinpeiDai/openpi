@@ -564,6 +564,20 @@ _CONFIGS = [
         num_train_steps=30_000,
     ),
     TrainConfig(
+        name="pi0_fast_libero_large_crosshair_dynamic_default_color",
+        model=pi0_fast.Pi0FASTConfig(action_dim=7, action_horizon=10, max_token_len=180),
+        data=LeRobotLiberoDataConfig(
+            repo_id="large_crosshair_dynamic_default_color",
+            base_config=DataConfig(
+                local_files_only=True,  # Set to True for local-only datasets.
+                prompt_from_task=True,
+            ),
+        ),
+        # Note that we load the pi0-FAST base model checkpoint here.
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        num_train_steps=32_000,
+    ),
+    TrainConfig(
         name="pi0_fast_libero_low_mem_finetune",
         # Here is an example of loading a pi0-FAST model for LoRA finetuning.
         # For setting action_dim, action_horizon, and max_token_len, see the comments above.
