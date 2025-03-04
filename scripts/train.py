@@ -25,6 +25,7 @@ import openpi.training.optimizer as _optimizer
 import openpi.training.sharding as sharding
 import openpi.training.utils as training_utils
 import openpi.training.weight_loaders as _weight_loaders
+import pprint
 
 
 def init_logging():
@@ -196,6 +197,13 @@ def train_step(
 def main(config: _config.TrainConfig):
     init_logging()
     logging.info(f"Running on: {platform.node()}")
+    
+    if config.lerobot_repo_id is not None:
+        logging.info(f"LeRobot repo ID: {config.lerobot_repo_id}")
+        object.__setattr__(config.data, "repo_id", config.lerobot_repo_id)
+        object.__setattr__(config.data.base_config, "local_files_only", True)
+    
+    logging.info(f"Config: {dataclasses.asdict(config)}")
 
     if config.batch_size % jax.device_count() != 0:
         raise ValueError(
