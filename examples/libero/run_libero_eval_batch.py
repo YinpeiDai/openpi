@@ -1,4 +1,5 @@
 import collections
+from copy import deepcopy
 import dataclasses
 import json
 import logging
@@ -16,8 +17,18 @@ from openpi_client import websocket_client_policy as _websocket_client_policy
 import tqdm
 import tyro
 
+from crosshair.reticle_builder import ReticleBuilder
+from crosshair.config import CONFIG_DICT
+from robosuite.utils.camera_utils import get_camera_extrinsic_matrix, get_camera_intrinsic_matrix, get_real_depth_map
+
+
 LIBERO_DUMMY_ACTION = [0.0] * 6 + [-1.0]
 LIBERO_ENV_RESOLUTION = 256  # resolution used to render training data
+
+def is_open(gripper_qpos):
+    if abs(gripper_qpos[0]) > 0.035 and abs(gripper_qpos[1]) > 0.035:
+        return True
+    return False
 
 
 @dataclasses.dataclass
@@ -48,7 +59,10 @@ class Args:
     
     model_name: str = "pi0_fast_libero"             # Model name
     task_start_id: int = 0                          # Start task ID
-    task_end_id: int = 0                            # End task ID
+    task_end_id: int = 10                            # End task ID
+    
+    use_reticle: bool = False  # Use reticle in the environment
+    reticle_config_key: str = "large_crosshair_dynamic_default_color"  # Reticle configuration key
 
 
 def eval_libero(args: Args) -> None:
@@ -88,6 +102,22 @@ def eval_libero(args: Args) -> None:
         
     print(f"Task suite: {args.task_suite_name} has total task number: {num_tasks_in_suite}, run on task from {args.task_start_id} to {args.task_end_id}")
     
+    if args.use_reticle:
+        print(f"Using reticle with configuration key: {args.reticle_config_key}")
+        config = CONFIG_DICT[args.reticle_config_key]
+        shooting_line_config = config["shooting_line"]
+        scope_reticle_config = config["scope_reticle"]
+        MAX_EE_TABLE_DIST = 0.4
+        FIXCAM_TOLERANCE = 18
+        WSTCAM_TOLERANCE = 12
+        scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
+        reticle_builder = ReticleBuilder(
+            shooting_line_config=shooting_line_config,
+            scope_reticle_config=scope_reticle_config,
+        )
+
+
+    
     # Start evaluation
     total_episodes, total_successes = 0, 0
     for task_id in tqdm.tqdm(range(args.task_start_id, args.task_end_id)):
@@ -98,7 +128,7 @@ def eval_libero(args: Args) -> None:
         initial_states = task_suite.get_task_init_states(task_id)
 
         # Initialize LIBERO environment and task description
-        env, task_description = _get_libero_env(task, LIBERO_ENV_RESOLUTION, args.seed)
+        env, task_description = _get_libero_env(task, LIBERO_ENV_RESOLUTION, args.seed, use_depth=args.use_reticle)
 
         results = {"task_id": task_id, "task_description":task_description, "data": []} 
 
@@ -128,11 +158,50 @@ def eval_libero(args: Args) -> None:
                         obs, reward, done, info = env.step(LIBERO_DUMMY_ACTION)
                         t += 1
                         continue
-
-                    # Get preprocessed image
-                    # IMPORTANT: rotate 180 degrees to match train preprocessing
-                    img = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
-                    wrist_img = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
+                    
+                    if args.use_reticle:
+                        front_depth = np.flipud(obs["agentview_depth"]).squeeze()
+                        front_depth_real = get_real_depth_map(env.sim, front_depth)
+                        
+                        agentview_rgb = reticle_builder.render_on_fix_camera(
+                            camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
+                            camera_depth=front_depth_real,
+                            camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
+                            camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                            gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                            gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                            gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                            image_height=LIBERO_ENV_RESOLUTION,
+                            image_width=LIBERO_ENV_RESOLUTION,
+                            tolerance=FIXCAM_TOLERANCE,
+                        )
+                        
+                        wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
+                        wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
+                        
+                        robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
+                            wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
+                            wrist_camera_depth=wrist_depth_real,
+                            wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
+                            wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                            gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                            gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                            gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                            image_height=LIBERO_ENV_RESOLUTION,
+                            image_width=LIBERO_ENV_RESOLUTION,
+                            tolerance=WSTCAM_TOLERANCE,
+                        )
+                        # agentview_rgb = agentview_rgb[:, ::-1]
+                        # robot0_eye_in_hand_rgb = robot0_eye_in_hand_rgb[:, ::-1]
+                        img = np.ascontiguousarray(agentview_rgb)
+                        wrist_img = np.ascontiguousarray(robot0_eye_in_hand_rgb)
+                        
+                    else:
+                        # Get preprocessed image
+                        # IMPORTANT: rotate 180 degrees to match train preprocessing
+                        img = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
+                        wrist_img = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
+                    
                     img = image_tools.convert_to_uint8(
                         image_tools.resize_with_pad(img, args.resize_size, args.resize_size)
                     )
@@ -216,11 +285,12 @@ def eval_libero(args: Args) -> None:
     env.close()
 
 
-def _get_libero_env(task, resolution, seed):
+def _get_libero_env(task, resolution, seed, use_depth=False):
     """Initializes and returns the LIBERO environment, along with the task description."""
     task_description = task.language
     task_bddl_file = pathlib.Path(get_libero_path("bddl_files")) / task.problem_folder / task.bddl_file
     env_args = {"bddl_file_name": task_bddl_file, "camera_heights": resolution, "camera_widths": resolution}
+    if use_depth: env_args["camera_depths"] = True
     env = OffScreenRenderEnv(**env_args)
     env.seed(seed)  # IMPORTANT: seed seems to affect object positions even when using fixed initial state
     return env, task_description
