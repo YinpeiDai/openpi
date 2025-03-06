@@ -4,3 +4,6 @@
 [submodule "third_party/libero"]
 	path = third_party/libero
 	url = https://github.com/Lifelong-Robot-Learning/LIBERO.git
+[submodule "third_party/scopereticle"]
+	path = third_party/scopereticle
+	url = git@gitlab.eecs.umich.edu:daiyp/scopereticle.git
