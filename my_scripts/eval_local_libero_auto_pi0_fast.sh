@@ -1,12 +1,13 @@
 cd /home/daiyp/openpi
 
-TASK_SUITE_NAME=libero_spatial
-MODEL_NAME=ttttttt
-DEVICE=0
-PORT=8001
-CKPT_DIR=/nfs/turbo/coe-chaijy-unreplicated/daiyp/openpi/ckpts/pi0_fast_libero/pi0_fast_libero_finetune_bs32/30000
+MODEL_NAME=pi0_fast_checkcheck
+DEVICE=1
+PORT=8004
+CKPT_DIR=/home/daiyp/openpi/runs/ckpts/pi0_fast_libero/large_crosshair_dynamic_default_color-bs32/20000
+TASK_SUITE_NAME=libero_goal
 USE_RETICLE=1
 RETICLE_CFG=large_crosshair_dynamic_default_color
+LEROBOT_REPO_ID=large_crosshair_dynamic_default_color
 
 SESSION_NAME="Eval-Pi0fast-${MODEL_NAME}-${TASK_SUITE_NAME}"
 
@@ -19,7 +20,7 @@ fi
 sleep 2
 tmux new-window -n server
 tmux send-keys "source .venv/bin/activate" Enter
-tmux send-keys "XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=${DEVICE} uv run scripts/serve_policy.py --port ${PORT}  policy:checkpoint --policy.config=pi0_fast_libero --policy.dir=${CKPT_DIR}" Enter
+tmux send-keys "XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=${DEVICE} uv run scripts/serve_policy.py --port ${PORT} --lerobot-repo-id ${LEROBOT_REPO_ID}  policy:checkpoint --policy.config=pi0_fast_libero --policy.dir=${CKPT_DIR}" Enter
 
 
 sleep 2
@@ -29,7 +30,7 @@ tmux send-keys "export PYTHONPATH=\$PYTHONPATH:\$PWD/third_party/libero" Enter
 tmux send-keys "export PYTHONPATH=\$PYTHONPATH:\$PWD/third_party/scopereticle/src" Enter
 # if use reticle, --use-reticle, else --no-use-reticle
 if [ "$USE_RETICLE" = 1 ]; then
-  tmux send-keys "CUDA_VISIBLE_DEVICES=${DEVICE} python examples/libero/run_libero_eval_batch.py  --model-name ${MODEL_NAME} --task_suite_name ${TASK_SUITE_NAME} --port ${PORT} --use_reticle --reticle_config_key ${RETICLE_CFG}" Enter
+  tmux send-keys "MUJOCO_EGL_DEVICE_ID=${DEVICE} CUDA_VISIBLE_DEVICES=${DEVICE} python examples/libero/run_libero_eval_batch.py  --model-name ${MODEL_NAME} --task_suite_name ${TASK_SUITE_NAME} --port ${PORT} --use_reticle --reticle_config_key ${RETICLE_CFG}" Enter
 else
-  tmux send-keys "CUDA_VISIBLE_DEVICES=${DEVICE} python examples/libero/run_libero_eval_batch.py  --model-name ${MODEL_NAME} --task_suite_name ${TASK_SUITE_NAME} --port ${PORT}" Enter
+  tmux send-keys "MUJOCO_EGL_DEVICE_ID=${DEVICE} CUDA_VISIBLE_DEVICES=${DEVICE} python examples/libero/run_libero_eval_batch.py  --model-name ${MODEL_NAME} --task_suite_name ${TASK_SUITE_NAME} --port ${PORT}" Enter
 fi
