@@ -8,7 +8,7 @@ PORT=8001
 CKPT_DIR=/nfs/turbo/coe-chaijy-unreplicated/daiyp/openpi/ckpts/pi0_libero/pi0_libero_finetune_bs32_acc2/30000
 TASK_SUITE_NAME=libero_spatial,libero_10 # comma separated
 # TASK_SUITE_NAME=libero_goal,libero_object
-USE_RETICLE=true
+USE_RETICLE=1
 RETICLE_CFG=large_crosshair_dynamic_default_color
 
 SESSION_NAME="Eval-Pi0-${MODEL_NAME}"

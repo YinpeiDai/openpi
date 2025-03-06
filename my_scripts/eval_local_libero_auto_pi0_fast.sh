@@ -5,7 +5,7 @@ MODEL_NAME=ttttttt
 DEVICE=0
 PORT=8001
 CKPT_DIR=/nfs/turbo/coe-chaijy-unreplicated/daiyp/openpi/ckpts/pi0_fast_libero/pi0_fast_libero_finetune_bs32/30000
-USE_RETICLE=true
+USE_RETICLE=1
 RETICLE_CFG=large_crosshair_dynamic_default_color
 
 SESSION_NAME="Eval-Pi0fast-${MODEL_NAME}-${TASK_SUITE_NAME}"
@@ -28,7 +28,7 @@ tmux send-keys "source examples/libero/.venv/bin/activate" Enter
 tmux send-keys "export PYTHONPATH=\$PYTHONPATH:\$PWD/third_party/libero" Enter
 tmux send-keys "export PYTHONPATH=\$PYTHONPATH:\$PWD/third_party/scopereticle/src" Enter
 # if use reticle, --use-reticle, else --no-use-reticle
-if [ "$USE_RETICLE" = true ]; then
+if [ "$USE_RETICLE" = 1 ]; then
   tmux send-keys "CUDA_VISIBLE_DEVICES=${DEVICE} python examples/libero/run_libero_eval_batch.py  --model-name ${MODEL_NAME} --task_suite_name ${TASK_SUITE_NAME} --port ${PORT} --use_reticle --reticle_config_key ${RETICLE_CFG}" Enter
 else
   tmux send-keys "CUDA_VISIBLE_DEVICES=${DEVICE} python examples/libero/run_libero_eval_batch.py  --model-name ${MODEL_NAME} --task_suite_name ${TASK_SUITE_NAME} --port ${PORT}" Enter

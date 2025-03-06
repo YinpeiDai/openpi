@@ -46,7 +46,7 @@ class Args:
     #################################################################################################################
     task_suite_name: str = (
         "libero_spatial"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
-    )
+    ) # can be multiple task suites separated by comma
     num_steps_wait: int = 10  # Number of steps to wait for objects to stabilize i n sim
     num_trials_per_task: int = 50  # Number of rollouts per task
 
@@ -68,220 +68,228 @@ class Args:
 def eval_libero(args: Args) -> None:
     # Set random seed
     np.random.seed(args.seed)
-
-    # Initialize LIBERO task suite
-    benchmark_dict = benchmark.get_benchmark_dict()
-    task_suite = benchmark_dict[args.task_suite_name]()
-    num_tasks_in_suite = task_suite.n_tasks
-    logging.info(f"Task suite: {args.task_suite_name}")
-
-    pathlib.Path(args.save_path).mkdir(parents=True, exist_ok=True)
-
-    save_dir = os.path.join(args.save_path, args.task_suite_name, args.model_name)
-    os.makedirs(save_dir, exist_ok=True)
-    save_dir_video = os.path.join(save_dir, "video")
-    os.makedirs(save_dir_video, exist_ok=True)
     
-    
-    if args.task_suite_name == "libero_spatial":
-        max_steps = 220  # longest training demo has 193 steps
-    elif args.task_suite_name == "libero_object":
-        max_steps = 280  # longest training demo has 254 steps
-    elif args.task_suite_name == "libero_goal":
-        max_steps = 300  # longest training demo has 270 steps
-    elif args.task_suite_name == "libero_10":
-        max_steps = 520  # longest training demo has 505 steps
-    elif args.task_suite_name == "libero_90":
-        max_steps = 400  # longest training demo has 373 steps
+    print("Input Task Suite:", args.task_suite_name.split(","))
+    if args.task_suite_name == "all":
+        task_suites = ["libero_spatial", "libero_object", "libero_goal", "libero_10"]
     else:
-        raise ValueError(f"Unknown task suite: {args.task_suite_name}")
+        task_suites = args.task_suite_name.split(",")
+    
+    for task_suite_name in tqdm.tqdm(task_suites):
 
-    print(f"connected to {args.host}:{args.port}")
-    client = _websocket_client_policy.WebsocketClientPolicy(args.host, args.port)
+        # Initialize LIBERO task suite
+        benchmark_dict = benchmark.get_benchmark_dict()
+        task_suite = benchmark_dict[task_suite_name]()
+        num_tasks_in_suite = task_suite.n_tasks
+        logging.info(f"Task suite: {task_suite_name}")
+
+        pathlib.Path(args.save_path).mkdir(parents=True, exist_ok=True)
+
+        save_dir = os.path.join(args.save_path, task_suite_name, args.model_name)
+        os.makedirs(save_dir, exist_ok=True)
+        save_dir_video = os.path.join(save_dir, "video")
+        os.makedirs(save_dir_video, exist_ok=True)
+        
+        
+        if task_suite_name == "libero_spatial":
+            max_steps = 220  # longest training demo has 193 steps
+        elif task_suite_name == "libero_object":
+            max_steps = 280  # longest training demo has 254 steps
+        elif task_suite_name == "libero_goal":
+            max_steps = 300  # longest training demo has 270 steps
+        elif task_suite_name == "libero_10":
+            max_steps = 520  # longest training demo has 505 steps
+        elif task_suite_name == "libero_90":
+            max_steps = 400  # longest training demo has 373 steps
+        else:
+            raise ValueError(f"Unknown task suite: {task_suite_name}")
+
+        print(f"connected to {args.host}:{args.port}")
+        client = _websocket_client_policy.WebsocketClientPolicy(args.host, args.port)
+
+            
+        print(f"Task suite: {task_suite_name} has total task number: {num_tasks_in_suite}, run on task from {args.task_start_id} to {args.task_end_id}")
+        
+        if args.use_reticle:
+            print(f"Using reticle with configuration key: {args.reticle_config_key}")
+            config = CONFIG_DICT[args.reticle_config_key]
+            shooting_line_config = config["shooting_line"]
+            scope_reticle_config = config["scope_reticle"]
+            MAX_EE_TABLE_DIST = 0.4
+            FIXCAM_TOLERANCE = 18
+            WSTCAM_TOLERANCE = 12
+            scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
+            reticle_builder = ReticleBuilder(
+                shooting_line_config=shooting_line_config,
+                scope_reticle_config=scope_reticle_config,
+            )
+
 
         
-    print(f"Task suite: {args.task_suite_name} has total task number: {num_tasks_in_suite}, run on task from {args.task_start_id} to {args.task_end_id}")
-    
-    if args.use_reticle:
-        print(f"Using reticle with configuration key: {args.reticle_config_key}")
-        config = CONFIG_DICT[args.reticle_config_key]
-        shooting_line_config = config["shooting_line"]
-        scope_reticle_config = config["scope_reticle"]
-        MAX_EE_TABLE_DIST = 0.4
-        FIXCAM_TOLERANCE = 18
-        WSTCAM_TOLERANCE = 12
-        scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
-        reticle_builder = ReticleBuilder(
-            shooting_line_config=shooting_line_config,
-            scope_reticle_config=scope_reticle_config,
-        )
+        # Start evaluation
+        total_episodes, total_successes = 0, 0
+        for task_id in tqdm.tqdm(range(args.task_start_id, args.task_end_id)):
+            # Get task
+            task = task_suite.get_task(task_id)
 
+            # Get default LIBERO initial states
+            initial_states = task_suite.get_task_init_states(task_id)
 
-    
-    # Start evaluation
-    total_episodes, total_successes = 0, 0
-    for task_id in tqdm.tqdm(range(args.task_start_id, args.task_end_id)):
-        # Get task
-        task = task_suite.get_task(task_id)
+            # Initialize LIBERO environment and task description
+            env, task_description = _get_libero_env(task, LIBERO_ENV_RESOLUTION, args.seed, use_depth=args.use_reticle)
 
-        # Get default LIBERO initial states
-        initial_states = task_suite.get_task_init_states(task_id)
+            results = {"task_id": task_id, "task_description":task_description, "data": []} 
 
-        # Initialize LIBERO environment and task description
-        env, task_description = _get_libero_env(task, LIBERO_ENV_RESOLUTION, args.seed, use_depth=args.use_reticle)
+            # Start episodes
+            task_episodes, task_successes = 0, 0
+            for episode_idx in tqdm.tqdm(range(args.num_trials_per_task)):
+                logging.info(f"\nTask: {task_description}")
 
-        results = {"task_id": task_id, "task_description":task_description, "data": []} 
+                # Reset environment
+                env.reset()
+                action_plan = collections.deque()
+                success = False
 
-        # Start episodes
-        task_episodes, task_successes = 0, 0
-        for episode_idx in tqdm.tqdm(range(args.num_trials_per_task)):
-            logging.info(f"\nTask: {task_description}")
+                # Set initial states
+                obs = env.set_init_state(initial_states[episode_idx])
 
-            # Reset environment
-            env.reset()
-            action_plan = collections.deque()
-            success = False
+                # Setup
+                t = 0
+                replay_images = []
 
-            # Set initial states
-            obs = env.set_init_state(initial_states[episode_idx])
+                logging.info(f"Starting episode {task_episodes+1}...")
+                while t < max_steps + args.num_steps_wait:
+                    try:
+                        # IMPORTANT: Do nothing for the first few timesteps because the simulator drops objects
+                        # and we need to wait for them to fall
+                        if t < args.num_steps_wait:
+                            obs, reward, done, info = env.step(LIBERO_DUMMY_ACTION)
+                            t += 1
+                            continue
+                        
+                        if args.use_reticle:
+                            front_depth = np.flipud(obs["agentview_depth"]).squeeze()
+                            front_depth_real = get_real_depth_map(env.sim, front_depth)
+                            
+                            agentview_rgb = reticle_builder.render_on_fix_camera(
+                                camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
+                                camera_depth=front_depth_real,
+                                camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
+                                camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                                gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                                image_height=LIBERO_ENV_RESOLUTION,
+                                image_width=LIBERO_ENV_RESOLUTION,
+                                tolerance=FIXCAM_TOLERANCE,
+                            )
+                            
+                            wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
+                            wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
+                            
+                            robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
+                                wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
+                                wrist_camera_depth=wrist_depth_real,
+                                wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
+                                wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                                gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                                image_height=LIBERO_ENV_RESOLUTION,
+                                image_width=LIBERO_ENV_RESOLUTION,
+                                tolerance=WSTCAM_TOLERANCE,
+                            )
+                            # agentview_rgb = agentview_rgb[:, ::-1]
+                            # robot0_eye_in_hand_rgb = robot0_eye_in_hand_rgb[:, ::-1]
+                            img = np.ascontiguousarray(agentview_rgb)
+                            wrist_img = np.ascontiguousarray(robot0_eye_in_hand_rgb)
+                            
+                        else:
+                            # Get preprocessed image
+                            # IMPORTANT: rotate 180 degrees to match train preprocessing
+                            img = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
+                            wrist_img = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
+                        
+                        img = image_tools.convert_to_uint8(
+                            image_tools.resize_with_pad(img, args.resize_size, args.resize_size)
+                        )
+                        wrist_img = image_tools.convert_to_uint8(
+                            image_tools.resize_with_pad(wrist_img, args.resize_size, args.resize_size)
+                        )
 
-            # Setup
-            t = 0
-            replay_images = []
+                        # Save preprocessed image for replay video
+                        replay_images.append(np.concatenate((img, wrist_img), axis=1))
 
-            logging.info(f"Starting episode {task_episodes+1}...")
-            while t < max_steps + args.num_steps_wait:
-                try:
-                    # IMPORTANT: Do nothing for the first few timesteps because the simulator drops objects
-                    # and we need to wait for them to fall
-                    if t < args.num_steps_wait:
-                        obs, reward, done, info = env.step(LIBERO_DUMMY_ACTION)
+                        if not action_plan:
+                            # Finished executing previous action chunk -- compute new chunk
+                            # Prepare observations dict
+                            element = {
+                                "observation/image": img,
+                                "observation/wrist_image": wrist_img,
+                                "observation/state": np.concatenate(
+                                    (
+                                        obs["robot0_eef_pos"],
+                                        _quat2axisangle(obs["robot0_eef_quat"]),
+                                        obs["robot0_gripper_qpos"],
+                                    )
+                                ),
+                                "prompt": str(task_description),
+                            }
+
+                            # Query model to get action
+                            action_chunk = client.infer(element)["actions"]
+                            assert (
+                                len(action_chunk) >= args.replan_steps
+                            ), f"We want to replan every {args.replan_steps} steps, but policy only predicts {len(action_chunk)} steps."
+                            action_plan.extend(action_chunk[: args.replan_steps])
+
+                        action = action_plan.popleft()
+
+                        # Execute action in environment
+                        obs, reward, done, info = env.step(action.tolist())
+                        if done:
+                            success = True
+                            task_successes += 1
+                            total_successes += 1
+                            break
                         t += 1
-                        continue
-                    
-                    if args.use_reticle:
-                        front_depth = np.flipud(obs["agentview_depth"]).squeeze()
-                        front_depth_real = get_real_depth_map(env.sim, front_depth)
-                        
-                        agentview_rgb = reticle_builder.render_on_fix_camera(
-                            camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
-                            camera_depth=front_depth_real,
-                            camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
-                            camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                            gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                            gripper_quat=deepcopy(obs["robot0_eef_quat"]),
-                            gripper_open=is_open(obs["robot0_gripper_qpos"]),
-                            image_height=LIBERO_ENV_RESOLUTION,
-                            image_width=LIBERO_ENV_RESOLUTION,
-                            tolerance=FIXCAM_TOLERANCE,
-                        )
-                        
-                        wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
-                        wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
-                        
-                        robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
-                            wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
-                            wrist_camera_depth=wrist_depth_real,
-                            wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
-                            wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                            gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                            gripper_quat=deepcopy(obs["robot0_eef_quat"]),
-                            gripper_open=is_open(obs["robot0_gripper_qpos"]),
-                            image_height=LIBERO_ENV_RESOLUTION,
-                            image_width=LIBERO_ENV_RESOLUTION,
-                            tolerance=WSTCAM_TOLERANCE,
-                        )
-                        # agentview_rgb = agentview_rgb[:, ::-1]
-                        # robot0_eye_in_hand_rgb = robot0_eye_in_hand_rgb[:, ::-1]
-                        img = np.ascontiguousarray(agentview_rgb)
-                        wrist_img = np.ascontiguousarray(robot0_eye_in_hand_rgb)
-                        
-                    else:
-                        # Get preprocessed image
-                        # IMPORTANT: rotate 180 degrees to match train preprocessing
-                        img = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
-                        wrist_img = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
-                    
-                    img = image_tools.convert_to_uint8(
-                        image_tools.resize_with_pad(img, args.resize_size, args.resize_size)
-                    )
-                    wrist_img = image_tools.convert_to_uint8(
-                        image_tools.resize_with_pad(wrist_img, args.resize_size, args.resize_size)
-                    )
 
-                    # Save preprocessed image for replay video
-                    replay_images.append(np.concatenate((img, wrist_img), axis=1))
-
-                    if not action_plan:
-                        # Finished executing previous action chunk -- compute new chunk
-                        # Prepare observations dict
-                        element = {
-                            "observation/image": img,
-                            "observation/wrist_image": wrist_img,
-                            "observation/state": np.concatenate(
-                                (
-                                    obs["robot0_eef_pos"],
-                                    _quat2axisangle(obs["robot0_eef_quat"]),
-                                    obs["robot0_gripper_qpos"],
-                                )
-                            ),
-                            "prompt": str(task_description),
-                        }
-
-                        # Query model to get action
-                        action_chunk = client.infer(element)["actions"]
-                        assert (
-                            len(action_chunk) >= args.replan_steps
-                        ), f"We want to replan every {args.replan_steps} steps, but policy only predicts {len(action_chunk)} steps."
-                        action_plan.extend(action_chunk[: args.replan_steps])
-
-                    action = action_plan.popleft()
-
-                    # Execute action in environment
-                    obs, reward, done, info = env.step(action.tolist())
-                    if done:
-                        success = True
-                        task_successes += 1
-                        total_successes += 1
+                    except Exception as e:
+                        logging.error(f"Caught exception: {e}")
                         break
-                    t += 1
 
-                except Exception as e:
-                    logging.error(f"Caught exception: {e}")
-                    break
+                task_episodes += 1
+                total_episodes += 1
 
-            task_episodes += 1
-            total_episodes += 1
-
-            # Save a replay video of the episode
-            suffix = "success" if done else "failure"
-            task_segment = task_description.replace(" ", "_")
-            
-            if episode_idx < 5:
-                imageio.mimwrite(
-                    os.path.join(save_dir, "video", f"task{task_id}-seed{args.seed}-{task_segment}_ep{episode_idx}_{suffix}.mp4"),
-                    [np.asarray(x) for x in replay_images],
-                    fps=30,
-                )
+                # Save a replay video of the episode
+                suffix = "success" if done else "failure"
+                task_segment = task_description.replace(" ", "_")
                 
-            results["data"].append({"episode": episode_idx, "success": success})
+                if episode_idx < 5:
+                    imageio.mimwrite(
+                        os.path.join(save_dir, "video", f"task{task_id}-seed{args.seed}-{task_segment}_ep{episode_idx}_{suffix}.mp4"),
+                        [np.asarray(x) for x in replay_images],
+                        fps=30,
+                    )
+                    
+                results["data"].append({"episode": episode_idx, "success": success})
 
-            # Log current results
-            logging.info(f"Success: {done}")
-            logging.info(f"# episodes completed so far: {total_episodes}")
-            logging.info(f"# successes: {total_successes} ({total_successes / total_episodes * 100:.1f}%)")
+                # Log current results
+                logging.info(f"Success: {done}")
+                logging.info(f"# episodes completed so far: {total_episodes}")
+                logging.info(f"# successes: {total_successes} ({total_successes / total_episodes * 100:.1f}%)")
 
-        processed_task_description = task_description.lower().replace(" ", "_").replace("\n", "_").replace(".", "_")
-        json_name = f"task{task_id}-seed{args.seed}-{processed_task_description}.json"
-        with open(os.path.join(save_dir, json_name), "w") as f:
-            json.dump(results, f, indent=2)
-            
-        # Log final results
-        logging.info(f"Current task success rate: {float(task_successes) / float(task_episodes)}")
-        logging.info(f"Current total success rate: {float(total_successes) / float(total_episodes)}")
+            processed_task_description = task_description.lower().replace(" ", "_").replace("\n", "_").replace(".", "_")
+            json_name = f"task{task_id}-seed{args.seed}-{processed_task_description}.json"
+            with open(os.path.join(save_dir, json_name), "w") as f:
+                json.dump(results, f, indent=2)
+                
+            # Log final results
+            logging.info(f"Current task success rate: {float(task_successes) / float(task_episodes)}")
+            logging.info(f"Current total success rate: {float(total_successes) / float(total_episodes)}")
 
-    logging.info(f"Total success rate: {float(total_successes) / float(total_episodes)}")
-    logging.info(f"Total episodes: {total_episodes}")
+        logging.info(f"Total success rate: {float(total_successes) / float(total_episodes)}")
+        logging.info(f"Total episodes: {total_episodes}")
     env.close()
 
 
