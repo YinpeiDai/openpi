@@ -202,6 +202,9 @@ def main(config: _config.TrainConfig):
         logging.info(f"LeRobot repo ID: {config.lerobot_repo_id}")
         object.__setattr__(config.data, "repo_id", config.lerobot_repo_id)
         object.__setattr__(config.data.base_config, "local_files_only", True)
+        
+    logging.info(f"Using delta: {config.apply_delta}")
+    object.__setattr__(config.data, "apply_delta", config.apply_delta)
     
     logging.info(f"Config: {dataclasses.asdict(config)}")
 

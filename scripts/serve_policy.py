@@ -56,6 +56,11 @@ class Args:
     policy: Checkpoint | Default = dataclasses.field(default_factory=Default)
     
     lerobot_repo_id: str | None = None # will load assets "_checkpoints.load_norm_stats(checkpoint_dir / "assets", data_config.asset_id)""
+    
+    apply_delta: bool = True
+    
+    asset_id: str | None = None
+
 
 
 # Default checkpoints that should be used for each environment.
@@ -103,6 +108,15 @@ def create_policy(args: Args) -> _policy.Policy:
                 object.__setattr__(train_config, "lerobot_repo_id", args.lerobot_repo_id)
                 object.__setattr__(train_config.data, "repo_id", args.lerobot_repo_id)
                 object.__setattr__(train_config.data.base_config, "local_files_only", True)
+            
+            if args.asset_id is not None:
+                logging.info(f"Asset ID: {args.asset_id}")
+                object.__setattr__(train_config.data.assets, "asset_id", args.asset_id)
+            
+            logging.info(f"Using delta: {args.apply_delta}")
+            object.__setattr__(train_config, "apply_delta", args.apply_delta)
+            object.__setattr__(train_config.data, "apply_delta", train_config.apply_delta)
+            
             return _policy_config.create_trained_policy(
                 train_config, args.policy.dir, default_prompt=args.default_prompt
             )

@@ -142,6 +142,8 @@ class DataConfigFactory(abc.ABC):
     assets: AssetsConfig = dataclasses.field(default_factory=AssetsConfig)
     # Base config that will be updated by the factory.
     base_config: tyro.conf.Suppress[DataConfig | None] = None
+    
+    apply_delta: bool = True
 
     @abc.abstractmethod
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
@@ -304,11 +306,16 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 
         # TODO(karl): comment this out once we have updated the Libero checkpoints to not use
         # the delta action transform
-        delta_action_mask = _transforms.make_bool_mask(6, -1)
-        data_transforms = data_transforms.push(
-            inputs=[_transforms.DeltaActions(delta_action_mask)],
-            outputs=[_transforms.AbsoluteActions(delta_action_mask)],
-        )
+        
+        if self.apply_delta:
+            print("!!!! We apply delta transform on actions !!!!!")
+            delta_action_mask = _transforms.make_bool_mask(6, -1)
+            data_transforms = data_transforms.push(
+                inputs=[_transforms.DeltaActions(delta_action_mask)],
+                outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+            )
+        else:
+            print("@@@@@We do not apply delta transform on actions@@@@@@")
 
         # Model transforms include things like tokenizing the prompt and action targets
         # You do not need to change anything here for your own dataset.
@@ -361,7 +368,7 @@ class TrainConfig:
     batch_size: int = 32
     # Number of workers to use for the data loader. Increasing this number will speed up data loading but
     # will increase memory and CPU usage.
-    num_workers: int = 2
+    num_workers: int = 4
     # Number of train steps (batches) to run.
     num_train_steps: int = 30_000
 
@@ -392,6 +399,8 @@ class TrainConfig:
     grad_accum_steps: int = 1
     
     lerobot_repo_id: str | None = None
+    
+    apply_delta: bool = True
 
     @property
     def assets_dirs(self) -> pathlib.Path:

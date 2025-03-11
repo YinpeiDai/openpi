@@ -61,6 +61,8 @@ class Args:
     task_start_id: int = 0                          # Start task ID
     task_end_id: int = 10                            # End task ID
     
+    save_video_num: int = 5  # Number of videos to save per task
+    
     use_reticle: bool = False  # Use reticle in the environment
     reticle_config_key: str = "large_crosshair_dynamic_default_color"  # Reticle configuration key
 
@@ -265,7 +267,7 @@ def eval_libero(args: Args) -> None:
                 suffix = "success" if done else "failure"
                 task_segment = task_description.replace(" ", "_")
                 
-                if episode_idx < 5:
+                if episode_idx < args.save_video_num:
                     imageio.mimwrite(
                         os.path.join(save_dir, "video", f"task{task_id}-seed{args.seed}-{task_segment}_ep{episode_idx}_{suffix}.mp4"),
                         [np.asarray(x) for x in replay_images],

@@ -4,9 +4,10 @@ TASK_SUITE_NAME=libero_spatial
 MODEL_NAME=ttttttt
 DEVICE=0
 PORT=8001
-CKPT_DIR=/nfs/turbo/coe-chaijy-unreplicated/daiyp/openpi/ckpts/pi0_fast_libero/pi0_fast_libero_finetune_bs32/30000
+CKPT_DIR=/home/daiyp/openpi/runs/ckpts/pi0_fast_libero/pi0_fast_large_crosshair_dynamic_default_color_new_no_delta/30000
 USE_RETICLE=1
 RETICLE_CFG=large_crosshair_dynamic_default_color
+APPLY_DELTA=1
 
 SESSION_NAME="Eval-Pi0fast-${MODEL_NAME}-${TASK_SUITE_NAME}"
 
@@ -19,7 +20,12 @@ fi
 sleep 2
 tmux new-window -n server
 tmux send-keys "source .venv/bin/activate" Enter
-tmux send-keys "XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=${DEVICE} uv run scripts/serve_policy.py --port ${PORT}  policy:checkpoint --policy.config=pi0_fast_libero --policy.dir=${CKPT_DIR}" Enter
+if [ "$APPLY_DELTA" = 1 ]; then
+  tmux send-keys "XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=${DEVICE} uv run scripts/serve_policy.py --port ${PORT}  policy:checkpoint --policy.config=pi0_fast_libero --policy.dir=${CKPT_DIR}" Enter
+else
+  tmux send-keys "XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=${DEVICE} uv run scripts/serve_policy.py --port ${PORT}  --no-apply-delta  policy:checkpoint --policy.config=pi0_fast_libero --policy.dir=${CKPT_DIR}" Enter
+fi
+
 
 
 sleep 2
