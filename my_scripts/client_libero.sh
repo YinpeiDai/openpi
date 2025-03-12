@@ -20,13 +20,13 @@ USE_RETICLE=$5
 if [ "$USE_RETICLE" = 1 ]; then
     for task_suite in "${task_suites[@]}"
     do 
-        CUDA_VISIBLE_DEVICES=$2 python examples/libero/run_libero_eval_batch.py  --model-name $3 --task_suite_name $task_suite --port $1 --use_reticle --reticle_config_key $6
+        MUJOCO_EGL_DEVICE_ID=$2 CUDA_VISIBLE_DEVICES=$2 python examples/libero/run_libero_eval_batch.py  --model-name $3 --task_suite_name $task_suite --port $1 --use_reticle --reticle_config_key $6
         sleep 3
     done
 else
     for task_suite in "${task_suites[@]}"
     do
-        CUDA_VISIBLE_DEVICES=$2 python examples/libero/run_libero_eval_batch.py  --model-name $3 --task_suite_name $task_suite --port $1
+        MUJOCO_EGL_DEVICE_ID=$2  CUDA_VISIBLE_DEVICES=$2 python examples/libero/run_libero_eval_batch.py  --model-name $3 --task_suite_name $task_suite --port $1
         sleep 3
     done
 fi
