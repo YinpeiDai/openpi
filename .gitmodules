@@ -7,3 +7,12 @@
 [submodule "third_party/scopereticle"]
 	path = third_party/scopereticle
 	url = git@gitlab.eecs.umich.edu:daiyp/scopereticle.git
+[submodule "third_party/RLBench"]
+	path = third_party/RLBench
+	url = git@github.com:YinpeiDai/RLBench.git
+[submodule "third_party/PyRep"]
+	path = third_party/PyRep
+	url = git@github.com:stepjam/PyRep.git
+[submodule "third_party/YARR"]
+	path = third_party/YARR
+	url = https://github.com/NVlabs/YARR.git
