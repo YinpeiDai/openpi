@@ -14,6 +14,7 @@ import openpi.training.config as _config
 import openpi.training.data_loader as _data_loader
 import openpi.transforms as transforms
 
+np.set_printoptions(precision=4, suppress=True)
 
 class RemoveStrings(transforms.DataTransformFn):
     def __call__(self, x: dict) -> dict:
@@ -37,11 +38,14 @@ def create_dataset(config: _config.TrainConfig) -> tuple[_config.DataConfig, _da
     return data_config, dataset
 
 
-def main(config_name: str, lerobot_repo_id: str | None = None, max_frames: int | None = None):
+def main(config_name: str, lerobot_repo_id: str | None = None, max_frames: int | None = None, apply_delta: bool = True):
     config = _config.get_config(config_name)
     if lerobot_repo_id is not None:
         object.__setattr__(config.data, "repo_id", lerobot_repo_id)
         object.__setattr__(config.data.base_config, "local_files_only", True)
+        
+    print(f"Using delta: {apply_delta}")
+    object.__setattr__(config.data, "apply_delta", apply_delta)
     
     data_config, dataset = create_dataset(config)
 

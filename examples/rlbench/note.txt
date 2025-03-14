@@ -1,0 +1,11 @@
+close_jar max_step 250
+peg 300
+light bulb in 380
+meat_grill 240
+open_drawer 150
+push_button 210
+stack_block 
+   -  2: 550
+   -  3: 700
+   -  4: 900
+stack_cups 360
