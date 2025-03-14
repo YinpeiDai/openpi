@@ -83,8 +83,8 @@ def main(data_dir: str = "modified_libero_rlds", repo_id: str = "modified_libero
                     {
                         "image": step["observation"]["image"],
                         "wrist_image": step["observation"]["wrist_image"],
-                        "state": step["observation"]["state"],
-                        "actions": step["action"],
+                        "state": step["observation"]["state"], # pos (3), axis-angle (3), grip_qpos (2)
+                        "actions": step["action"], # delta pos (3), delta rpy (3), delta_grip (1)
                     }
                 )
             dataset.save_episode(task=step["language_instruction"].decode())
