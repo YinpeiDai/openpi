@@ -9,3 +9,21 @@ stack_block
    -  3: 700
    -  4: 900
 stack_cups 360
+
+
+# install 
+uv venv --python 3.9 examples/rlbench/.venv
+# change line92 in  examples/rlbench/.venv/bin/activate  `export VIRTUAL_ENV_PROMPT="(rlbench) "`
+source examples/rlbench/.venv/bin/activate
+source examples/rlbench/setup_bash.sh 
+
+uv pip install -e packages/openpi-client
+uv pip install -e  third_party/RLBench/
+uv pip install -e  third_party/YARR/
+uv pip install -e  third_party/PyRep/
+uv pip install -e  third_party/scopereticle/
+
+uv pip install git+https://github.com/openai/CLIP.git
+uv pip install numpy-quaternion pyquaternion h5py tyro
+uv pip uninstall opencv-python
+uv pip install opencv-python-headless

@@ -1,4 +1,5 @@
 import copy
+import math
 import pickle
 import numpy as np
 from pyrep.objects import VisionSensor, Dummy
@@ -19,6 +20,7 @@ import numpy as np
 import quaternion
 from scipy.spatial.transform import Rotation
 from rlbench.backend.observation import Observation
+from scipy.spatial.transform import Rotation as R
 
 from typing import Type, List
 
@@ -58,6 +60,100 @@ RLBENCH_TASKS = [
     "meat_off_grill",
     "stack_cups",
 ]
+
+
+
+def quat2rpy(action):
+    pos = action[:3]
+    quat = action[3:7]
+    rpy = R.from_quat(quat).as_euler("xyz")
+    return np.concatenate([pos, rpy])
+
+def rpy2quat(action):
+    pos = action[:3]
+    rpy = action[3:6]
+    quat = R.from_euler("xyz", rpy).as_quat()
+    return np.concatenate([pos, quat])
+    
+
+def compute_delta_action(state, action):
+    """
+    Compute the delta action between a given state and action while handling 2π wrap for orientation.
+    
+    Parameters:
+        state  : tuple (x, y, z, roll, pitch, yaw)  -> Current state
+        action : tuple (x, y, z, roll, pitch, yaw)  -> Target action
+    
+    Returns:
+        delta_action : tuple (Δx, Δy, Δz, Δroll, Δpitch, Δyaw)
+    """
+    # Compute linear deltas
+    delta_x = action[0] - state[0]
+    delta_y = action[1] - state[1]
+    delta_z = action[2] - state[2]
+    
+    # Compute angular deltas with 2π wrap-around
+    delta_roll = (action[3] - state[3] + np.pi) % (2 * np.pi) - np.pi
+    delta_pitch = (action[4] - state[4] + np.pi) % (2 * np.pi) - np.pi
+    delta_yaw = (action[5] - state[5] + np.pi) % (2 * np.pi) - np.pi
+    
+    return np.array([delta_x, delta_y, delta_z, delta_roll, delta_pitch, delta_yaw])
+
+
+def compute_action(state, delta_action):
+    """
+    Compute the new action given the initial state and delta action while handling 2π wrap for orientation.
+    
+    Parameters:
+        state        : tuple (x, y, z, roll, pitch, yaw)  -> Initial state
+        delta_action : tuple (Δx, Δy, Δz, Δroll, Δpitch, Δyaw)  -> Delta action
+    
+    Returns:
+        action : tuple (x, y, z, roll, pitch, yaw) -> Computed action
+    """
+    # Compute linear positions
+    x_new = state[0] + delta_action[0]
+    y_new = state[1] + delta_action[1]
+    z_new = state[2] + delta_action[2]
+
+    # Compute new orientations with 2π wrap-around
+    roll_new = (state[3] + delta_action[3]) % (2 * np.pi)
+    pitch_new = (state[4] + delta_action[4]) % (2 * np.pi)
+    yaw_new = (state[5] + delta_action[5]) % (2 * np.pi)
+
+    # Ensure angles remain in range [-π, π]
+    if roll_new > np.pi:
+        roll_new -= 2 * np.pi
+    if pitch_new > np.pi:
+        pitch_new -= 2 * np.pi
+    if yaw_new > np.pi:
+        yaw_new -= 2 * np.pi
+
+    return np.array([x_new, y_new, z_new, roll_new, pitch_new, yaw_new])
+
+def quat2axisangle(quat):
+    """
+    Converts quaternion to axis-angle format.
+    Returns a unit vector direction scaled by its angle in radians.
+
+    Args:
+        quat (np.array): (x,y,z,w) vec4 float angles
+
+    Returns:
+        np.array: (ax,ay,az) axis-angle exponential coordinates
+    """
+    # clip quaternion
+    if quat[3] > 1.0:
+        quat[3] = 1.0
+    elif quat[3] < -1.0:
+        quat[3] = -1.0
+
+    den = np.sqrt(1.0 - quat[3] * quat[3])
+    if math.isclose(den, 0.0):
+        # This is (close to) a zero degree rotation, immediately return
+        return np.zeros(3)
+
+    return (quat[:3] * 2.0 * math.acos(quat[3])) / den
 
 
 class NeverStop(Condition):
@@ -511,79 +607,3 @@ ROTATION_LARGE_THRES = 20
 # Directions: (name, axis, +ve sign = 1)
 # backward = closer to VLM's view & forward = further away from VLM's perspective
 DIRECTIONS = [("backward", 0, 1), ("forward", 0, -1), ("right", 1, 1), ("left", 1, -1), ("down", 2, -1), ("up", 2, 1)]
-
-def get_robot_delta_state(prev_obs:Observation, curr_obs:Observation):
-        if prev_obs is None or curr_obs is None:
-            return "The robot makes an invalid action."
-        prev_action = Action.from_numpy(np.hstack((prev_obs.gripper_pose, prev_obs.gripper_open, prev_obs.ignore_collisions)))
-        curr_action = Action.from_numpy(np.hstack((curr_obs.gripper_pose, curr_obs.gripper_open, curr_obs.ignore_collisions)))
-        delta_action = curr_action.delta_action(prev_action, curr_action)
-
-        sentence_parts = []
-
-        is_translation_changed = True
-        is_rotation_changed = True
-        is_gripper_changed = True
-        is_collision_changed = True
-        # Position descriptions
-        movements = []
-        for direction, axis, sign in DIRECTIONS:
-            translation_component = delta_action['translation'][axis]
-            if sign * translation_component > TRANSLATION_SMALL_THRES:
-                desc = f"moved {direction}"
-                if abs(translation_component) < TRANSLATION_LARGE_THRES:
-                    desc += " a little bit"
-                movements.append(desc)
-        if not movements:
-            movements.append("didn't move its gripper")
-            is_translation_changed = False
-
-        sentence_parts.append(", ".join(movements))
-
-        # Rotation description
-        rotation = None
-        if np.any(np.abs(delta_action['rotation']) > ROTATION_SMALL_THRES):
-            if all(np.abs(delta_action['rotation']) > ROTATION_SMALL_THRES):
-                rotation = "rotated the gripper"
-            elif np.abs(delta_action['rotation'][2]) > ROTATION_LARGE_THRES:
-                rotation = "rotated the gripper about z-axis"
-        else:
-            rotation = "didn't rotate the gripper"
-            is_rotation_changed = False
-        
-        if rotation:
-            sentence_parts.append(rotation)
-
-        # Gripper change
-        if delta_action['gripper'] != 0:
-            gripper_change = "opened the gripper" if delta_action['gripper'] == 1 else "closed the gripper"
-        else:
-            gripper_change = "kept the gripper open" if curr_action.gripper_open == 1 else "kept the gripper closed"
-            is_gripper_changed = False
-        sentence_parts.append(gripper_change)
-
-        # Collision plan
-        collision_description = ""
-        if delta_action['collision'] != 0:
-            collision_description = "that can allow collisions" if delta_action['collision'] == 1 else "that avoids any collision"
-            collision_description = f"by planning a motion path {collision_description}"
-        else:
-            is_collision_changed = False
-
-        # Join parts with proper handling of "and"
-        complete_sentence = "Then the robot " + sentence_parts[0]
-        if len(sentence_parts) > 1:
-            for part in sentence_parts[1:]:
-                if part == gripper_change:
-                    complete_sentence += f", and {part}"
-                else:
-                    complete_sentence += f", {part}"
-
-        # Append collision description last if it exists
-        if collision_description:
-            complete_sentence += f" {collision_description}"
-
-        complete_sentence += "."
-
-        is_robot_state_changed = is_translation_changed or is_rotation_changed or is_gripper_changed or is_collision_changed
-        return complete_sentence, is_robot_state_changed

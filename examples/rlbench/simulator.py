@@ -5,7 +5,7 @@ from numpy import ndarray
 from rlbench.backend.const import *
 from rlbench.backend.utils import task_file_to_task_class
 
-from .utils import ROLLOUT_IMAGE_SIZE, CustomRLRenchEnv2
+from utils import ROLLOUT_IMAGE_SIZE, CustomRLRenchEnv2
 from rlbench import CameraConfig, ObservationConfig
 from pyrep.const import RenderMode
 from PIL import Image

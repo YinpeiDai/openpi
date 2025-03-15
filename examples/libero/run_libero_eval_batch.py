@@ -220,7 +220,10 @@ def eval_libero(args: Args) -> None:
                         )
 
                         # Save preprocessed image for replay video
-                        replay_images.append(np.concatenate((img, wrist_img), axis=1))
+                        if args.use_reticle:
+                            replay_images.append(np.concatenate((img, wrist_img), axis=1))
+                        else:
+                            replay_images.append(np.concatenate((img[:, ::-1], wrist_img[:, ::-1]), axis=1))
 
                         if not action_plan:
                             # Finished executing previous action chunk -- compute new chunk
@@ -271,7 +274,7 @@ def eval_libero(args: Args) -> None:
                     imageio.mimwrite(
                         os.path.join(save_dir, "video", f"task{task_id}-seed{args.seed}-{task_segment}_ep{episode_idx}_{suffix}.mp4"),
                         [np.asarray(x) for x in replay_images],
-                        fps=45,
+                        fps=30,
                     )
                     
                 results["data"].append({"episode": episode_idx, "success": success})
