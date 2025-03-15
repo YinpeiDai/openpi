@@ -126,13 +126,16 @@ def eval_rlbench(args: Args) -> None:
         resolution=RLBENCH_ENV_RESOLUTION
     )
 
-    if task_name == "all":
+    if args.task_name == "all":
         task_name_list = RLBENCH_TASKS
-    elif "," in task_name:
-        task_name_list = task_name.split(",")
+    elif "," in args.task_name:
+        task_name_list = [t.strip() for t in args.task_name.split(",")]
+    elif args.task_name in RLBENCH_TASKS:
+        task_name_list = [args.task_name]
     else:
-        task_name_list = [task_name]
+        raise ValueError(f"Unknown task: {args.task_name}")
     
+    print("Task list: ", task_name_list)
     for task_name in task_name_list:
         save_dir = os.path.join(args.save_path, task_name, args.model_name)
         os.makedirs(save_dir, exist_ok=True)
