@@ -65,6 +65,8 @@ class Args:
     
     use_reticle: bool = False  # Use reticle in the environment
     reticle_config_key: str = "large_crosshair_dynamic_default_color"  # Reticle configuration key
+    
+    use_grasp_sense: bool = False  # Use grasp sense in reticle
 
 
 def eval_libero(args: Args) -> None:
@@ -76,6 +78,12 @@ def eval_libero(args: Args) -> None:
         task_suites = ["libero_spatial", "libero_object", "libero_goal", "libero_10"]
     else:
         task_suites = args.task_suite_name.split(",")
+        
+    print(f"connected to {args.host}:{args.port}")
+    client = _websocket_client_policy.WebsocketClientPolicy(args.host, args.port)
+    
+    print("use grasp sense:", args.use_grasp_sense)
+
     
     for task_suite_name in tqdm.tqdm(task_suites):
 
@@ -106,9 +114,6 @@ def eval_libero(args: Args) -> None:
         else:
             raise ValueError(f"Unknown task suite: {task_suite_name}")
 
-        print(f"connected to {args.host}:{args.port}")
-        client = _websocket_client_policy.WebsocketClientPolicy(args.host, args.port)
-
             
         print(f"Task suite: {task_suite_name} has total task number: {num_tasks_in_suite}, run on task from {args.task_start_id} to {args.task_end_id}")
         
@@ -121,10 +126,24 @@ def eval_libero(args: Args) -> None:
             FIXCAM_TOLERANCE = 18
             WSTCAM_TOLERANCE = 12
             scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
-            reticle_builder = ReticleBuilder(
-                shooting_line_config=shooting_line_config,
-                scope_reticle_config=scope_reticle_config,
-            )
+            
+            if args.use_grasp_sense:
+                reticle_builder = ReticleBuilder(
+                    shooting_line_config=shooting_line_config,
+                    scope_reticle_config=scope_reticle_config,
+                    
+                    ####
+                    use_grasp_sense=True,
+                    gripper_width=0.06,
+                    gripper_grasp_depth= 0.095,
+                    grasp_sense_offset=-10
+                    
+                )
+            else:
+                reticle_builder = ReticleBuilder(
+                    shooting_line_config=shooting_line_config,
+                    scope_reticle_config=scope_reticle_config,
+                )
 
 
         
@@ -170,37 +189,64 @@ def eval_libero(args: Args) -> None:
                             continue
                         
                         if args.use_reticle:
-                            front_depth = np.flipud(obs["agentview_depth"]).squeeze()
-                            front_depth_real = get_real_depth_map(env.sim, front_depth)
-                            
-                            agentview_rgb = reticle_builder.render_on_fix_camera(
-                                camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
-                                camera_depth=front_depth_real,
-                                camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
-                                camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                gripper_quat=deepcopy(obs["robot0_eef_quat"]),
-                                gripper_open=is_open(obs["robot0_gripper_qpos"]),
-                                image_height=LIBERO_ENV_RESOLUTION,
-                                image_width=LIBERO_ENV_RESOLUTION,
-                                tolerance=FIXCAM_TOLERANCE,
-                            )
-                            
-                            wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
-                            wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
-                            
-                            robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
-                                wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
-                                wrist_camera_depth=wrist_depth_real,
-                                wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
-                                wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                gripper_quat=deepcopy(obs["robot0_eef_quat"]),
-                                gripper_open=is_open(obs["robot0_gripper_qpos"]),
-                                image_height=LIBERO_ENV_RESOLUTION,
-                                image_width=LIBERO_ENV_RESOLUTION,
-                                tolerance=WSTCAM_TOLERANCE,
-                            )
+                            if args.use_grasp_sense:
+                                front_depth = np.flipud(obs["agentview_depth"]).squeeze()
+                                front_depth_real = get_real_depth_map(env.sim, front_depth)
+                                
+                                wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
+                                wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
+                                
+                                agentview_rgb, robot0_eye_in_hand_rgb = reticle_builder.render_on_front_and_wst_camera(
+                                    front_camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
+                                    front_camera_depth=front_depth_real,
+                                    front_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
+                                    front_camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                    wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
+                                    wrist_camera_depth=wrist_depth_real,
+                                    wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
+                                    wrist_camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                                    image_height=LIBERO_ENV_RESOLUTION,
+                                    image_width=LIBERO_ENV_RESOLUTION,
+                                    front_tolerance=FIXCAM_TOLERANCE,
+                                    wrist_tolerance=WSTCAM_TOLERANCE,
+                                )
+                                        
+                            else: 
+                                front_depth = np.flipud(obs["agentview_depth"]).squeeze()
+                                front_depth_real = get_real_depth_map(env.sim, front_depth)
+                                
+                                agentview_rgb = reticle_builder.render_on_fix_camera(
+                                    camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
+                                    camera_depth=front_depth_real,
+                                    camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
+                                    camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                                    image_height=LIBERO_ENV_RESOLUTION,
+                                    image_width=LIBERO_ENV_RESOLUTION,
+                                    tolerance=FIXCAM_TOLERANCE,
+                                )
+                                
+                                wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
+                                wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
+                                
+                                robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
+                                    wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
+                                    wrist_camera_depth=wrist_depth_real,
+                                    wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
+                                    wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                                    image_height=LIBERO_ENV_RESOLUTION,
+                                    image_width=LIBERO_ENV_RESOLUTION,
+                                    tolerance=WSTCAM_TOLERANCE,
+                                )
+                                
                             # agentview_rgb = agentview_rgb[:, ::-1]
                             # robot0_eye_in_hand_rgb = robot0_eye_in_hand_rgb[:, ::-1]
                             img = np.ascontiguousarray(agentview_rgb)
