@@ -465,15 +465,6 @@ class TrainConfig:
         return nnx.All(nnx.Param, nnx.Not(self.freeze_filter))
 
     def __post_init__(self) -> None:
-        if self.grad_accum_steps > 1:
-            if self.batch_size % self.grad_accum_steps != 0:
-                raise ValueError(f"Global Batch size must be divisible by grad_accum_steps. Got {self.batch_size} over {self.grad_accum_steps} steps")
-            object.__setattr__(
-                self,
-                "batch_size",
-                self.batch_size // self.grad_accum_steps
-            )
-            logging.info(f"Batch size adjusted to {self.batch_size} since grad_accum_steps is {self.grad_accum_steps}")
         if self.resume and self.overwrite:
             raise ValueError("Cannot resume and overwrite at the same time.")
 

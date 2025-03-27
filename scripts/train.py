@@ -86,9 +86,7 @@ def init_train_state(
     config: _config.TrainConfig, init_rng: at.KeyArrayLike, mesh: jax.sharding.Mesh, *, resume: bool
 ) -> tuple[training_utils.TrainState, Any]:
     tx = _optimizer.create_optimizer(config.optimizer, config.lr_schedule, weight_decay_mask=None)
-    
-    if config.grad_accum_steps > 1:
-        tx = optax.chain(optax.scale_by_schedule(lambda step: 1 / config.grad_accum_steps), tx)
+
 
     def init(rng: at.KeyArrayLike, partial_params: at.Params | None = None) -> training_utils.TrainState:
         rng, model_rng = jax.random.split(rng)
@@ -255,7 +253,6 @@ def main(config: _config.TrainConfig):
     )
 
     start_step = int(train_state.step)
-    start_step = start_step // config.grad_accum_steps
     print("Start step:", start_step)
     pbar = tqdm.tqdm(
         range(start_step, config.num_train_steps),
@@ -266,11 +263,10 @@ def main(config: _config.TrainConfig):
 
     infos = []
     for step in pbar:
-        for _ in range(config.grad_accum_steps):
-            with sharding.set_mesh(mesh):
-                train_state, info = ptrain_step(train_rng, train_state, batch)
-            infos.append(info)
-            batch = next(data_iter)
+        with sharding.set_mesh(mesh):
+            train_state, info = ptrain_step(train_rng, train_state, batch)
+        infos.append(info)
+        batch = next(data_iter)
             
         if step % config.log_interval == 0:
             stacked_infos = common_utils.stack_forest(infos)
