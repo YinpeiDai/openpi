@@ -191,6 +191,106 @@ def train_step(
     }
     return new_state, info
 
+@at.typecheck
+def train_step_grad_accum(
+    config: _config.TrainConfig,
+    rng: at.KeyArrayLike,
+    state: training_utils.TrainState,
+    batch: tuple[_model.Observation, _model.Actions],
+) -> tuple[training_utils.TrainState, dict[str, at.Array]]:
+    model = nnx.merge(state.model_def, state.params)
+    model.train()
+
+    @at.typecheck
+    def loss_fn(
+        model: _model.BaseModel, rng: at.KeyArrayLike, observation: _model.Observation, actions: _model.Actions
+    ):
+        chunked_loss = model.compute_loss(rng, observation, actions, train=True)
+        return jnp.mean(chunked_loss)
+
+    train_rng = jax.random.fold_in(rng, state.step)
+    observation, actions = batch
+
+    # Filter out frozen params.
+    diff_state = nnx.DiffState(0, config.trainable_filter)
+    params = state.params.filter(config.trainable_filter)
+
+    # Function to compute grad for one microbatch and accumulate it
+    def accumulate_grads(i, carry):
+        rng, grad_sum, loss_sum = carry
+        micro_batch_size = actions.shape[0] // config.grad_accum_steps
+        start_idx = i * micro_batch_size
+        
+        # Create micro-batch by slicing the underlying arrays
+        micro_observation = jax.tree_util.tree_map(
+            lambda x: jax.lax.dynamic_slice(x, (start_idx,) + (0,) * (x.ndim - 1), (micro_batch_size,) + x.shape[1:])
+            if isinstance(x, jnp.ndarray) else x,
+            observation
+        )
+        jax.debug.print("micro_observation: {}", micro_observation.images)
+        jax.debug.print("micro_observation: {}", micro_observation.image_masks)
+        jax.debug.print("micro_observation: {}", micro_observation.state)
+        jax.debug.print("micro_observation: {}", micro_observation.tokenized_prompt)
+        jax.debug.print("micro_observation: {}", micro_observation.tokenized_prompt_mask)
+        micro_actions = jax.tree_util.tree_map(
+            lambda x: jax.lax.dynamic_slice(x, (start_idx,) + (0,) * (x.ndim - 1), (micro_batch_size,) + x.shape[1:])
+            if isinstance(x, jnp.ndarray) else x,
+            actions
+        )
+        jax.debug.print("micro_actions: {}", micro_actions.shape)
+        
+        # Compute loss and gradients for micro-batch
+        loss, grads = nnx.value_and_grad(loss_fn, argnums=diff_state)(model, rng, micro_observation, micro_actions)
+        
+        # Accumulate gradients and loss
+        grad_sum = jax.tree_map(lambda acc, g: acc + g / config.grad_accum_steps, grad_sum, grads)
+        loss_sum = loss_sum + loss / config.grad_accum_steps
+        return (rng, grad_sum, loss_sum)
+
+    # Initialize grad sum and loss sum
+    init_grads = jax.tree_util.tree_map(jnp.zeros_like, params)
+
+    init_loss = 0.0
+    _, accumulated_grads, accumulated_loss = jax.lax.fori_loop(
+        0,
+        config.grad_accum_steps,  # number of micro-batches
+        accumulate_grads,
+        (train_rng, init_grads, init_loss),
+    )
+
+    # Single optimizer update after accumulation
+    updates, new_opt_state = state.tx.update(accumulated_grads, state.opt_state, params)
+    new_params = optax.apply_updates(params, updates)
+
+    # Update the model in place and return the new full state.
+    nnx.update(model, new_params)
+    new_params = nnx.state(model)
+
+    new_state = dataclasses.replace(state, step=state.step + 1, params=new_params, opt_state=new_opt_state)
+    if state.ema_decay is not None:
+        new_state = dataclasses.replace(
+            new_state,
+            ema_params=jax.tree.map(
+                lambda old, new: state.ema_decay * old + (1 - state.ema_decay) * new, state.ema_params, new_params
+            ),
+        )
+
+    # Filter out params that aren't kernels.
+    kernel_params = nnx.state(
+        model,
+        nnx.All(
+            nnx.Param,
+            nnx.Not(nnx_utils.PathRegex(".*/(bias|scale|pos_embedding|input_embedding)")),
+            lambda _, x: x.value.ndim > 1,
+        ),
+    )
+    info = {
+        "loss": accumulated_loss,
+        "grad_norm": optax.global_norm(accumulated_grads),
+        "param_norm": optax.global_norm(kernel_params),
+    }
+    return new_state, info
+
 
 def main(config: _config.TrainConfig):
     init_logging()
@@ -244,13 +344,23 @@ def main(config: _config.TrainConfig):
 
     if resuming:
         train_state = _checkpoints.restore_state(checkpoint_manager, train_state, data_loader)
-
-    ptrain_step = jax.jit(
-        functools.partial(train_step, config),
-        in_shardings=(replicated_sharding, train_state_sharding, data_sharding),
-        out_shardings=(train_state_sharding, replicated_sharding),
-        donate_argnums=(1,),
-    )
+    
+    if config.grad_accum_steps > 1:
+        print("!!! We are using the grad accum train_step !!! (config.grad_accum_steps = {})".format(config.grad_accum_steps))
+        ptrain_step = jax.jit(
+            functools.partial(train_step_grad_accum, config),
+            in_shardings=(replicated_sharding, train_state_sharding, data_sharding),
+            out_shardings=(train_state_sharding, replicated_sharding),
+            donate_argnums=(1,),
+        )
+    else:
+        print("!!! We are using the original train_step !!!")
+        ptrain_step = jax.jit(
+            functools.partial(train_step, config),
+            in_shardings=(replicated_sharding, train_state_sharding, data_sharding),
+            out_shardings=(train_state_sharding, replicated_sharding),
+            donate_argnums=(1,),
+        )
 
     start_step = int(train_state.step)
     print("Start step:", start_step)
