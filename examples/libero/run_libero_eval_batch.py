@@ -53,7 +53,7 @@ class Args:
     #################################################################################################################
     # Utils
     #################################################################################################################
-    save_path: str = "/home/daiyp/openpi/runs/evaluation"  # Path to save videos
+    save_path: str = "runs/evaluation"  # Path to save videos
 
     seed: int = 7  # Random Seed (for reproducibility)
     
@@ -61,7 +61,7 @@ class Args:
     task_start_id: int = 0                          # Start task ID
     task_end_id: int = 10                            # End task ID
     
-    save_video_num: int = 50  # Number of videos to save per task
+    save_video_num: int = 100  # Number of videos to save per task
     
     use_reticle: bool = False  # Use reticle in the environment
     reticle_config_key: str = "large_crosshair_dynamic_default_color"  # Reticle configuration key
@@ -102,13 +102,13 @@ def eval_libero(args: Args) -> None:
         
         
         if task_suite_name == "libero_spatial":
-            max_steps = 220  # longest training demo has 193 steps
+            max_steps = 250  # longest training demo has 193 steps
         elif task_suite_name == "libero_object":
-            max_steps = 280  # longest training demo has 254 steps
+            max_steps = 300  # longest training demo has 254 steps
         elif task_suite_name == "libero_goal":
-            max_steps = 300  # longest training demo has 270 steps
+            max_steps = 350  # longest training demo has 270 steps
         elif task_suite_name == "libero_10":
-            max_steps = 520  # longest training demo has 505 steps
+            max_steps = 560  # longest training demo has 505 steps
         elif task_suite_name == "libero_90":
             max_steps = 400  # longest training demo has 373 steps
         else:
@@ -122,7 +122,7 @@ def eval_libero(args: Args) -> None:
             config = CONFIG_DICT[args.reticle_config_key]
             shooting_line_config = config["shooting_line"]
             scope_reticle_config = config["scope_reticle"]
-            MAX_EE_TABLE_DIST = 0.4
+            MAX_EE_TABLE_DIST = 0.4 # change this to 0.2 when evaluating on large_crosshair_dynamic_default_color_tilt
             FIXCAM_TOLERANCE = 18
             WSTCAM_TOLERANCE = 12
             scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
@@ -135,7 +135,7 @@ def eval_libero(args: Args) -> None:
                     ####
                     use_grasp_sense=True,
                     gripper_width=0.06,
-                    gripper_grasp_depth= 0.095,
+                    gripper_grasp_depth= 0.094,
                     grasp_sense_offset=-10
                     
                 )
