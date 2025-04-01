@@ -239,7 +239,7 @@ class TorchDataLoader:
             collate_fn=_collate_fn,
             worker_init_fn=_worker_init_fn,
             drop_last=True,
-            generator=generator,
+            generator=generator
         )
 
     @property

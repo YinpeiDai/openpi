@@ -3,11 +3,39 @@
 
 # transfer rlds data into lerobot data
 # change REPO_NAME (for lerobot repo id), RAW_DATASET_NAMES (for  /path/to/your/libero/data)
-uv run examples/libero/convert_libero_data_to_lerobot.py --data_dir /nfs/turbo/coe-chaijy-unreplicated/daiyp/tensorflow_datasets/large_crosshair_dynamic_default_color --repo_id testest
+
+micromamba activate tfds2lerobot
+python examples/libero/convert_libero_data_to_lerobot.py --data_dir $MYDIR/tfds_reticle_data/final_large_crosshair_dynamic_default_color_no_grasp_sense --repo_id large_crosshair_dynamic_default_color_no_grasp_sense
+
+python examples/libero/convert_libero_data_to_lerobot.py --data_dir $MYDIR/tfds_reticle_data/final_large_crosshair_dynamic_plain_color --repo_id large_crosshair_dynamic_plain_color
+
+python examples/libero/convert_libero_data_to_lerobot.py --data_dir $MYDIR/tfds_reticle_data/final_large_crosshair_fixed_default_color --repo_id large_crosshair_fixed_default_color
+
+python examples/libero/convert_libero_data_to_lerobot.py --data_dir $MYDIR/tfds_reticle_data/final_small_crosshair_dynamic_default_color --repo_id small_crosshair_dynamic_default_color
+
+python examples/libero/convert_libero_data_to_lerobot.py --data_dir $MYDIR/tfds_reticle_data/final_large_bullseye_dynamic_default_color --repo_id large_bullseye_dynamic_default_color
+
+python examples/libero/convert_libero_data_to_lerobot.py --data_dir /home/ubuntu/chailab/daiyp/tfds_reticle_data/final_large_crosshair_dynamic_default_color_tilt --repo_id xxx
+
+
+
+
+
+large_bullseye_dynamic_default_color
+large_crosshair_dynamic_default_color
+large_crosshair_dynamic_default_color_no_grasp_sense
+large_crosshair_dynamic_plain_color
+large_crosshair_fixed_default_color
+small_crosshair_dynamic_default_color
+large_crosshair_dynamic_default_color_tilt
+
 
 # comute stats for my own dataset
-uv run scripts/compute_norm_stats.py --config-name pi0_fast_libero --lerobot-repo-id large_crosshair_dynamic_default_color 
-uv run scripts/compute_norm_stats.py --config-name pi0_libero --lerobot-repo-id large_crosshair_dynamic_default_color 
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 uv run scripts/compute_norm_stats.py --config-name pi0_fast_libero --lerobot-repo-id large_crosshair_dynamic_default_color 
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 uv run scripts/compute_norm_stats.py --config-name pi0_libero --lerobot-repo-id large_crosshair_dynamic_default_color 
+
+
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 python scripts/compute_norm_stats.py --config-name pi0_libero --lerobot-repo-id large_crosshair_dynamic_default_color_no_grasp_sense
 
 
 
