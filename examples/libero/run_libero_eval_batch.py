@@ -212,6 +212,7 @@ def eval_libero(args: Args) -> None:
                                     image_width=LIBERO_ENV_RESOLUTION,
                                     front_tolerance=FIXCAM_TOLERANCE,
                                     wrist_tolerance=WSTCAM_TOLERANCE,
+                                    gripper_qpos=deepcopy(obs["robot0_gripper_qpos"]),
                                 )
                                         
                             else: 
