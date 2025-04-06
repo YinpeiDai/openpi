@@ -582,7 +582,8 @@ _CONFIGS = [
                 prompt_from_task=True,
             ),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_droid/params"),
         num_train_steps=20_000,
     ),
     
@@ -596,6 +597,7 @@ _CONFIGS = [
                 prompt_from_task=True,
             ),
         ),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_droid/params"),
         num_train_steps=20_000,
     ),
