@@ -32,5 +32,5 @@ tstart = time.time()
 pred_action_chunk = policy_client.infer(request_data)["actions"]
 tend = time.time()
 print(f"Time taken: {tend - tstart} seconds")
-print(pred_action_chunk)
+print(pred_action_chunk[0]) #  [ 0.05286577  0.48139466 -0.06828832 -1.55042222 -0.13999516  2.03134505 0.68084685  1. ]
 print(pred_action_chunk.shape)
