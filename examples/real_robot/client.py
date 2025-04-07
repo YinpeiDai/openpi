@@ -18,7 +18,7 @@ faulthandler.enable()
 
 class RobotEnv:
     # Jayjun implementation
-    def __init__(self):
+    def __init__(self, use_reticle: bool = False):
         pass
 
     def get_observation(self):
@@ -31,6 +31,7 @@ class RobotEnv:
         pass
     
     def step(self, action):
+        # action is (8,), 7 joint position + 1 gripper position
         pass
     
 
