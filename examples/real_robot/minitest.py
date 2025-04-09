@@ -8,12 +8,12 @@ np.set_printoptions(precision=5, suppress=True)
 
 
 
-left_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples/left_shoulder_image_111.png"))
-right_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples/right_shoulder_image_111.png"))
-wrist_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples/wrist_image_111.png"))
-instruction = "put the tennis ball in the red bowl"
+left_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/left_shoulder_image_224.png"))
+right_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/right_shoulder_image_224.png"))
+wrist_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/wrist_image_224.png"))
+instruction = "put the cup on the coffee machine"
 
-state = [ 0.04678168, 0.3744241, -0.01841199, -1.66965973, -0.15927081, 2.10611606, 0.67752624, 0.63006682]
+state = [-6.36629835e-02, -3.31839137e-02, -1.23551235e-01, -2.74614859e+00, 2.19897553e-01, 2.61483908e+00, -1.66412270e+00, 2.32637301e-03]
 state = np.array(state, dtype=np.float32)
 
 request_data = {

@@ -121,9 +121,8 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
         image_writer_threads=10,
         image_writer_processes=5,
     )
-
     
-    for hdf5_file in Path(data_dir).glob("*.hdf5"):                
+    for hdf5_file in Path(data_dir).glob("*.hdf5"):  
         data = h5py.File(hdf5_file, 'r')
         language_instruction = hdf5_file.name.split("-")[0].replace("_", " ")
         print(language_instruction)

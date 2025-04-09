@@ -2,8 +2,8 @@ import h5py
 from pathlib import Path
 import numpy as np
 
-use_reticle = False
-data_dir = "/data/daiyp/crosshair/real_data"
+use_reticle = True
+data_dir = "/data/daiyp/crosshair/real_data/coffee/"
 
 for hdf5_file in Path(data_dir).glob("*.hdf5"):                
     data = h5py.File(hdf5_file, 'r')
@@ -56,12 +56,12 @@ for hdf5_file in Path(data_dir).glob("*.hdf5"):
         
         
         from PIL import Image
-        Image.fromarray(left_shoulder_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/samples/left_shoulder_image_{idx}.png")
-        Image.fromarray(right_shoulder_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/samples/right_shoulder_image_{idx}.png")
-        Image.fromarray(wrist_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/samples/wrist_image_{idx}.png")
+        Image.fromarray(left_shoulder_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/left_shoulder_image_{idx}.png")
+        Image.fromarray(right_shoulder_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/right_shoulder_image_{idx}.png")
+        Image.fromarray(wrist_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/wrist_image_{idx}.png")
         
         # store joint_states and joint_actions into a text file
-        with open(f"/home/daiyp/openpi/examples/real_robot/samples/joint_states_{idx}.txt", "w") as f:
+        with open(f"/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/joint_states_{idx}.txt", "w") as f:
             f.write(f"joint_states: {joint_states}\n")
             f.write(f"joint_actions: {joint_actions}\n")
         
