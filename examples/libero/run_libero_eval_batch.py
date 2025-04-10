@@ -53,8 +53,7 @@ class Args:
     #################################################################################################################
     # Utils
     #################################################################################################################
-    
-    save_path: str = "/home/ubuntu/chailab/daiyp/openpi/runs/evaluation"  # Path to save videos
+    save_path: str = "runs/evaluation"  # Path to save videos
 
     seed: int = 7  # Random Seed (for reproducibility)
     
@@ -181,133 +180,135 @@ def eval_libero(args: Args) -> None:
 
                 logging.info(f"Starting episode {task_episodes+1}...")
                 while t < max_steps + args.num_steps_wait:
-                    # IMPORTANT: Do nothing for the first few timesteps because the simulator drops objects
-                    # and we need to wait for them to fall
-                    if t < args.num_steps_wait:
-                        obs, reward, done, info = env.step(LIBERO_DUMMY_ACTION)
-                        t += 1
-                        continue
-                    
-                    if args.use_reticle:
-                        if args.use_grasp_sense:
-                            front_depth = np.flipud(obs["agentview_depth"]).squeeze()
-                            front_depth_real = get_real_depth_map(env.sim, front_depth)
-                            
-                            wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
-                            wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
-                            
-                            agentview_rgb, robot0_eye_in_hand_rgb = reticle_builder.render_on_front_and_wst_camera(
-                                front_camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
-                                front_camera_depth=front_depth_real,
-                                front_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
-                                front_camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
-                                wrist_camera_depth=wrist_depth_real,
-                                wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
-                                wrist_camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                gripper_quat=deepcopy(obs["robot0_eef_quat"]),
-                                gripper_open=is_open(obs["robot0_gripper_qpos"]),
-                                image_height=LIBERO_ENV_RESOLUTION,
-                                image_width=LIBERO_ENV_RESOLUTION,
-                                front_tolerance=FIXCAM_TOLERANCE,
-                                wrist_tolerance=WSTCAM_TOLERANCE,
-                            )
-                                    
-                        else: 
-                            front_depth = np.flipud(obs["agentview_depth"]).squeeze()
-                            front_depth_real = get_real_depth_map(env.sim, front_depth)
-                            
-                            agentview_rgb = reticle_builder.render_on_fix_camera(
-                                camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
-                                camera_depth=front_depth_real,
-                                camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
-                                camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                gripper_quat=deepcopy(obs["robot0_eef_quat"]),
-                                gripper_open=is_open(obs["robot0_gripper_qpos"]),
-                                image_height=LIBERO_ENV_RESOLUTION,
-                                image_width=LIBERO_ENV_RESOLUTION,
-                                tolerance=FIXCAM_TOLERANCE,
-                            )
-                            
-                            wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
-                            wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
-                            
-                            robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
-                                wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
-                                wrist_camera_depth=wrist_depth_real,
-                                wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
-                                wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                gripper_quat=deepcopy(obs["robot0_eef_quat"]),
-                                gripper_open=is_open(obs["robot0_gripper_qpos"]),
-                                image_height=LIBERO_ENV_RESOLUTION,
-                                image_width=LIBERO_ENV_RESOLUTION,
-                                tolerance=WSTCAM_TOLERANCE,
-                            )
-                            
-                        # agentview_rgb = agentview_rgb[:, ::-1]
-                        # robot0_eye_in_hand_rgb = robot0_eye_in_hand_rgb[:, ::-1]
-                        img = np.ascontiguousarray(agentview_rgb)
-                        wrist_img = np.ascontiguousarray(robot0_eye_in_hand_rgb)
+                    try:
+                        # IMPORTANT: Do nothing for the first few timesteps because the simulator drops objects
+                        # and we need to wait for them to fall
+                        if t < args.num_steps_wait:
+                            obs, reward, done, info = env.step(LIBERO_DUMMY_ACTION)
+                            t += 1
+                            continue
                         
-                    else:
-                        # Get preprocessed image
-                        # IMPORTANT: rotate 180 degrees to match train preprocessing
-                        img = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
-                        wrist_img = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
-                    
-                    img = image_tools.convert_to_uint8(
-                        image_tools.resize_with_pad(img, args.resize_size, args.resize_size)
-                    )
-                    wrist_img = image_tools.convert_to_uint8(
-                        image_tools.resize_with_pad(wrist_img, args.resize_size, args.resize_size)
-                    )
-
-                    # Save preprocessed image for replay video
-                    if args.use_reticle:
-                        replay_images.append(np.concatenate((img, wrist_img), axis=1))
-                    else:
-                        replay_images.append(np.concatenate((img[:, ::-1], wrist_img[:, ::-1]), axis=1))
-
-                    if not action_plan:
-                        # Finished executing previous action chunk -- compute new chunk
-                        # Prepare observations dict
-                        element = {
-                            "observation/image": img,
-                            "observation/wrist_image": wrist_img,
-                            "observation/state": np.concatenate(
-                                (
-                                    obs["robot0_eef_pos"],
-                                    _quat2axisangle(obs["robot0_eef_quat"]),
-                                    obs["robot0_gripper_qpos"],
+                        if args.use_reticle:
+                            if args.use_grasp_sense:
+                                front_depth = np.flipud(obs["agentview_depth"]).squeeze()
+                                front_depth_real = get_real_depth_map(env.sim, front_depth)
+                                
+                                wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
+                                wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
+                                
+                                agentview_rgb, robot0_eye_in_hand_rgb = reticle_builder.render_on_front_and_wst_camera(
+                                    front_camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
+                                    front_camera_depth=front_depth_real,
+                                    front_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
+                                    front_camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                    wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
+                                    wrist_camera_depth=wrist_depth_real,
+                                    wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
+                                    wrist_camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                                    image_height=LIBERO_ENV_RESOLUTION,
+                                    image_width=LIBERO_ENV_RESOLUTION,
+                                    front_tolerance=FIXCAM_TOLERANCE,
+                                    wrist_tolerance=WSTCAM_TOLERANCE,
+                                    gripper_qpos=deepcopy(obs["robot0_gripper_qpos"]),
                                 )
-                            ),
-                            "prompt": str(task_description),
-                        }
+                                        
+                            else: 
+                                front_depth = np.flipud(obs["agentview_depth"]).squeeze()
+                                front_depth_real = get_real_depth_map(env.sim, front_depth)
+                                
+                                agentview_rgb = reticle_builder.render_on_fix_camera(
+                                    camera_rgb=np.flipud(obs["agentview_image"]).astype(np.uint8),
+                                    camera_depth=front_depth_real,
+                                    camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
+                                    camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                                    image_height=LIBERO_ENV_RESOLUTION,
+                                    image_width=LIBERO_ENV_RESOLUTION,
+                                    tolerance=FIXCAM_TOLERANCE,
+                                )
+                                
+                                wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
+                                wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
+                                
+                                robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
+                                    wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
+                                    wrist_camera_depth=wrist_depth_real,
+                                    wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
+                                    wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
+                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
+                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_open=is_open(obs["robot0_gripper_qpos"]),
+                                    image_height=LIBERO_ENV_RESOLUTION,
+                                    image_width=LIBERO_ENV_RESOLUTION,
+                                    tolerance=WSTCAM_TOLERANCE,
+                                )
+                                
+                            # agentview_rgb = agentview_rgb[:, ::-1]
+                            # robot0_eye_in_hand_rgb = robot0_eye_in_hand_rgb[:, ::-1]
+                            img = np.ascontiguousarray(agentview_rgb)
+                            wrist_img = np.ascontiguousarray(robot0_eye_in_hand_rgb)
+                            
+                        else:
+                            # Get preprocessed image
+                            # IMPORTANT: rotate 180 degrees to match train preprocessing
+                            img = np.ascontiguousarray(obs["agentview_image"][::-1, ::-1])
+                            wrist_img = np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1])
+                        
+                        img = image_tools.convert_to_uint8(
+                            image_tools.resize_with_pad(img, args.resize_size, args.resize_size)
+                        )
+                        wrist_img = image_tools.convert_to_uint8(
+                            image_tools.resize_with_pad(wrist_img, args.resize_size, args.resize_size)
+                        )
 
-                        # Query model to get action
-                        action_chunk = client.infer(element)["actions"]
-                        assert (
-                            len(action_chunk) >= args.replan_steps
-                        ), f"We want to replan every {args.replan_steps} steps, but policy only predicts {len(action_chunk)} steps."
-                        action_plan.extend(action_chunk[: args.replan_steps])
+                        # Save preprocessed image for replay video
+                        if args.use_reticle:
+                            replay_images.append(np.concatenate((img, wrist_img), axis=1))
+                        else:
+                            replay_images.append(np.concatenate((img[:, ::-1], wrist_img[:, ::-1]), axis=1))
 
-                    action = action_plan.popleft()
+                        if not action_plan:
+                            # Finished executing previous action chunk -- compute new chunk
+                            # Prepare observations dict
+                            element = {
+                                "observation/image": img,
+                                "observation/wrist_image": wrist_img,
+                                "observation/state": np.concatenate(
+                                    (
+                                        obs["robot0_eef_pos"],
+                                        _quat2axisangle(obs["robot0_eef_quat"]),
+                                        obs["robot0_gripper_qpos"],
+                                    )
+                                ),
+                                "prompt": str(task_description),
+                            }
 
-                    # Execute action in environment
-                    obs, reward, done, info = env.step(action.tolist())
-                    if done:
-                        success = True
-                        task_successes += 1
-                        total_successes += 1
+                            # Query model to get action
+                            action_chunk = client.infer(element)["actions"]
+                            assert (
+                                len(action_chunk) >= args.replan_steps
+                            ), f"We want to replan every {args.replan_steps} steps, but policy only predicts {len(action_chunk)} steps."
+                            action_plan.extend(action_chunk[: args.replan_steps])
+
+                        action = action_plan.popleft()
+
+                        # Execute action in environment
+                        obs, reward, done, info = env.step(action.tolist())
+                        if done:
+                            success = True
+                            task_successes += 1
+                            total_successes += 1
+                            break
+                        t += 1
+
+                    except Exception as e:
+                        logging.error(f"Caught exception: {e}")
                         break
-                    t += 1
-
-                    # except Exception as e:
-                    #     logging.error(f"Caught exception: {e}")
-                    #     break
 
                 task_episodes += 1
                 total_episodes += 1
