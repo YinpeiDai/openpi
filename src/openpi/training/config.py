@@ -489,6 +489,8 @@ class TrainConfig:
     lerobot_repo_id: str | None = None
     
     apply_delta: bool = True
+    
+    use_quantile_norm: bool = False
 
     @property
     def assets_dirs(self) -> pathlib.Path:
@@ -508,6 +510,15 @@ class TrainConfig:
         return nnx.All(nnx.Param, nnx.Not(self.freeze_filter))
 
     def __post_init__(self) -> None:
+        if self.grad_accum_steps > 1:
+             if self.batch_size % self.grad_accum_steps != 0:
+                 raise ValueError(f"Global Batch size must be divisible by grad_accum_steps. Got {self.batch_size} over {self.grad_accum_steps} steps")
+             object.__setattr__(
+                 self,
+                 "batch_size",
+                 self.batch_size // self.grad_accum_steps
+             )
+             logging.info(f"Batch size adjusted to {self.batch_size} since grad_accum_steps is {self.grad_accum_steps}")
         if self.resume and self.overwrite:
             raise ValueError("Cannot resume and overwrite at the same time.")
 
@@ -602,6 +613,20 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_droid/params"),
         num_train_steps=20_000,
     ),
+    TrainConfig(
+        name="pi0_realrobot_long_horizon",
+        model=pi0.Pi0Config(action_horizon=30),
+        data=LeRobotRealRobotDataConfig(
+            repo_id="real_robot_data",
+            base_config=DataConfig(
+                local_files_only=True,
+                prompt_from_task=True,
+            ),
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_droid/params"),
+        num_train_steps=20_000,
+    ),
     
     ### Fine-tuning RLbench configs.
     TrainConfig(
@@ -658,12 +683,13 @@ _CONFIGS = [
                 # This flag determines whether we load the prompt (i.e. the task instruction) from the
                 # ``task`` field in the LeRobot dataset. If set to True, the prompt will show up in
                 # a field called ``prompt`` in the input dict. The recommended setting is True.
-                prompt_from_task=True,
+                prompt_from_task=True
             ),
         ),
         # Here you define which pre-trained checkpoint you want to load to initialize the model.
         # This should match the model config you chose above -- i.e. in this case we use the pi0 base model.
-        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_droid/params"),
+        # weight_loader=weight_loaders.CheckpointWeightLoader("/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_libero/pi0-libero-final_v2_large_crosshair_dynamic_default_color_long/16000/params"),
         # Below you can define other hyperparameters like the learning rate, number of training steps, etc.
         # Check the base TrainConfig class for a full list of available hyperparameters.
         num_train_steps=30_000,
@@ -711,6 +737,7 @@ _CONFIGS = [
                 prompt_from_task=True,
             ),
         ),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=30_000, decay_lr=1e-6),
         # Note that we load the pi0-FAST base model checkpoint here.
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
         num_train_steps=30_000,

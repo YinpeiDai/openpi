@@ -60,6 +60,8 @@ class Args:
     apply_delta: bool = True
     
     asset_id: str | None = None
+    
+    use_quantile_norm: bool = False
 
 
 
@@ -113,6 +115,10 @@ def create_policy(args: Args) -> _policy.Policy:
                 logging.info(f"Asset ID: {args.asset_id}")
                 object.__setattr__(train_config.data.assets, "asset_id", args.asset_id)
             
+            if args.use_quantile_norm:
+                logging.info(f"~~~~ Using quantile norm ~~~~~~")
+                object.__setattr__(train_config.data.base_config, "use_quantile_norm", args.use_quantile_norm)
+            
             logging.info(f"Using delta: {args.apply_delta}")
             object.__setattr__(train_config, "apply_delta", args.apply_delta)
             object.__setattr__(train_config.data, "apply_delta", train_config.apply_delta)
@@ -138,7 +144,7 @@ def main(args: Args) -> None:
 
     server = websocket_policy_server.WebsocketPolicyServer(
         policy=policy,
-        host="0.0.0.0",
+        host="localhost",
         port=args.port,
         metadata=policy_metadata,
     )
