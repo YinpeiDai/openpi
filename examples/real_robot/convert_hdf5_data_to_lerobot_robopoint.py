@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import shutil
+import sys
 import time
 
 from lerobot.common.datasets.lerobot_dataset import LEROBOT_HOME
@@ -69,7 +70,7 @@ def base64_to_img(base64_str: str):
 class RobotPointClient:
     
     def __init__(self):
-        gradio_public_url = "https://dcd0c42919e8920d7a.gradio.live"
+        gradio_public_url = "https://15106c491b133d0ab1.gradio.live"
         self.client = Client(gradio_public_url)
         self.client.view_api()
    
@@ -179,7 +180,7 @@ def is_noop(action, prev_action=None, threshold=1e-3, is_cartesian=False):
     return np.linalg.norm(delta_action[:-1]) < threshold and gripper_action == prev_gripper_action
 
 
-def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "realrobot_robopointpoint", use_reticle: bool = False, use_robotpoint: bool = True, use_trace: bool = False):
+def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "realrobot_robopointxxxx", use_reticle: bool = False, use_robotpoint: bool = True, use_trace: bool = False):
     # Clean up any existing dataset in the output directory
     output_path = LEROBOT_HOME / repo_id
     if output_path.exists():
@@ -270,6 +271,8 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
             left_shoulder_image = data["observation/camera_rgb/left_shoulder"]
             right_shoulder_image = data["observation/camera_rgb/right_shoulder"]
             wrist_image = data["observation/camera_rgb/wrist"]
+            
+            
 
         length = len(action_joint_position)
         if length < 50:
@@ -297,7 +300,8 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
             
             
             if use_robotpoint:    
-                if idx in [0, length//2]: 
+                print(f"querying robopoint for {idx}")
+                if idx in list(range(35, 50)): 
                     try:           
                         query_text = f"The task is {language_instruction}. Find relevant points on the image to perform the task."
                         result = robot_point_client.query_robopoint(
@@ -317,19 +321,24 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
                             query_text=query_text,
                         )
                         wrist_structured_data = result["structured_data"]
-                        print(wrist_structured_data)
+                        print(wrist_structured_data)        
+                    
                     except Exception as e:
                         print(f"Error querying robopoint: {e}")
                         continue
-                        
-                # visualize the results
-                left_shoulder_img = visualize_2d(Image.fromarray(left_shoulder_image[idx]), left_shoulder_structured_data["points"], scale=1)
-                right_shoulder_img = visualize_2d(Image.fromarray(right_shoulder_image[idx]), right_shoulder_structured_data["points"], scale=1)
-                wrist_img = visualize_2d(Image.fromarray(wrist_image[idx]), wrist_structured_data["points"], scale=1)
-                
-                # left_shoulder_img.save(f"sandbox/left_shoulder_image_{idx}.png")
-                # right_shoulder_img.save(f"sandbox/right_shoulder_image_{idx}.png")
-                # wrist_img.save(f"sandbox/wrist_image_{idx}.png")                    
+                    
+                    # visualize the results
+                    left_shoulder_img = visualize_2d(Image.fromarray(left_shoulder_image[idx]), left_shoulder_structured_data["points"], scale=1)
+                    right_shoulder_img = visualize_2d(Image.fromarray(right_shoulder_image[idx]), right_shoulder_structured_data["points"], scale=1)
+                    wrist_img = visualize_2d(Image.fromarray(wrist_image[idx]), wrist_structured_data["points"], scale=1)
+                    
+                    left_shoulder_img.save(f"sandbox/robopoint/left_shoulder_image_{idx}.png")
+                    # right_shoulder_img.save(f"sandbox/right_shoulder_image_{idx}.png")
+                    wrist_img.save(f"sandbox/wrist_image_{idx}.png")     
+                else:
+                    left_shoulder_img = left_shoulder_image[idx]
+                    right_shoulder_img = right_shoulder_image[idx]
+                    wrist_img = wrist_image[idx]
             
             # if use_trace:
             #     pass
@@ -338,6 +347,9 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
                 right_shoulder_img = right_shoulder_image[idx]
                 wrist_img = wrist_image[idx]
             
+            Image.fromarray(left_shoulder_image[idx]).save(f"sandbox/normal/left_shoulder_image_{idx}.png")
+            Image.fromarray(right_shoulder_image[idx]).save(f"sandbox/normal/right_shoulder_image_{idx}.png")
+            Image.fromarray(wrist_image[idx]).save(f"sandbox/normal/wrist_image_{idx}.png")
             
             dataset.add_frame(
                 {
@@ -360,6 +372,7 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
             # Image.fromarray(right_shoulder_image[idx]).save(f"right_shoulder_image.png")
             # Image.fromarray(wrist_image[idx]).save(f"wrist_image.png")
 
+        sys.exit()
         if record:
             dataset.save_episode(task=language_instruction)
 

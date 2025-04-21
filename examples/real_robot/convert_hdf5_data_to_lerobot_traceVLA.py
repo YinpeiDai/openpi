@@ -1,12 +1,12 @@
-
-
 from pathlib import Path
 import shutil
+import sys
 import time
 
 from lerobot.common.datasets.lerobot_dataset import LEROBOT_HOME
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 import numpy as np
+import tqdm
 import tyro
 from scipy.spatial.transform import Rotation as R
 import h5py
@@ -26,35 +26,6 @@ def print_structure(name, obj):
     elif isinstance(obj, h5py.Dataset):
         print(f"  Dataset: {name} | Shape: {obj.shape} | Dtype: {obj.dtype}")
 
- 
-def visualize_2d(img, points, scale=1, cross_size=5, cross_width=2):
-    # msg_data is a tuple: (PIL Image, image_mode)
-    # image_mode has something to do with how the image is cropped when feeding into model
-
-    if img.mode != 'RGBA':
-        img = img.convert('RGBA')
-
-    # Create a drawing context
-    draw = ImageDraw.Draw(img)
-    size = int(cross_size * scale)
-    width = int(cross_width * scale)
-
-    # Draw each point as a red X
-    for x, y in points:
-        # Draw a cross ('X') at the point location
-        x = int(img.width * x)
-        y = int(img.height * y)
-        draw.line((
-            x - size, y - size, x + size, y + size
-        ), fill='red', width=width)
-        draw.line((
-            x - size, y + size, x + size, y - size
-        ), fill='red', width=width)
-
-
-    img = img.convert('RGB')
-    return img
-
 
 def img_to_base64(image: Image.Image):
     buffer = io.BytesIO()
@@ -66,25 +37,19 @@ def base64_to_img(base64_str: str):
     img_str = base64.b64decode(base64_str.split("base64,")[1])
     return Image.open(io.BytesIO(img_str))
 
-class RobotPointClient:
+class TraceClient:
     
     def __init__(self):
-        gradio_public_url = "https://dcd0c42919e8920d7a.gradio.live"
+        gradio_public_url = "https://4bff1c13e7dbea04f9.gradio.live"
         self.client = Client(gradio_public_url)
         self.client.view_api()
    
-    
-    def query_robopoint(
+    def query_trace(
         self,
         image: str | Image.Image,
-        query_text: str,
-        model_name: str = "robopoint-v1-vicuna-v1.5-13b",
-        temperature: float = 1.0,
-        top_p: float = 0.7,
-        max_tokens: int = 512,
-        image_process_mode: Literal["Pad", "Crop"] = "Pad",
-        save_img_log: bool = True,
-        visualize: bool = False,
+        task_description: str,
+        which_shoulder: Literal["left", "right"],
+        reset_trace: bool = False,
     ) -> dict:
         # Check if image exists
         if isinstance(image, str):
@@ -103,36 +68,22 @@ class RobotPointClient:
 
         # Submit the prediction
         try:
-            # Call the predict method with our inputs
-            result = self.client.predict(
-                image=image_input,                # image_input
-                text=query_text,                # text_input
-                model_name=model_name,                # model_selector
-                temperature=temperature,
-                top_p=top_p,
-                max_tokens=max_tokens,
-                image_process_mode=image_process_mode,
-                save_img_log=save_img_log,
-                visualize=visualize,
-                api_name="/process_query"
+            action_str, trace_img_file, pred_time = self.client.predict(
+                image=image_input,
+                task_description=task_description,
+                unnorm_key="bc_z",
+                which_hand=which_shoulder,
+                reset_trace=reset_trace # reset trace tracker at the beginning of each episode
             )
-            
-            # Extract the responses
-            text_response, visualize_img_path, json_data = result
-
-            vis_img_b64 = None
-            if visualize_img_path:
-                vis_img = Image.open(visualize_img_path)
-                vis_img_b64 = img_to_base64(vis_img)
-
-            return {
-                "text_response": text_response,
-                "visualize_image": vis_img_b64,
-                "structured_data": json_data
-            }
+            # print("pred_time:", pred_time)
+            if trace_img_file is not None:
+                # trace_img_file is a temporary file created by gradio
+                trace_img_file = Image.open(trace_img_file)
+            return trace_img_file
             
         except Exception as e:
-            return {"error": f"Error making prediction: {str(e)}"}
+            print(f"Error making prediction: {str(e)}")
+            return None
 
 
 
@@ -179,7 +130,7 @@ def is_noop(action, prev_action=None, threshold=1e-3, is_cartesian=False):
     return np.linalg.norm(delta_action[:-1]) < threshold and gripper_action == prev_gripper_action
 
 
-def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "realrobot_robopointpoint", use_reticle: bool = False, use_robotpoint: bool = True, use_trace: bool = False):
+def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "realrobot_tracevlaxxxx", use_reticle: bool = False, use_robotpoint: bool = False, use_trace: bool = True):
     # Clean up any existing dataset in the output directory
     output_path = LEROBOT_HOME / repo_id
     if output_path.exists():
@@ -242,10 +193,10 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
     hdf5_files = [file for file in hdf5_files if not any(exclude_dir in str(file) for exclude_dir in exclude_dirs)]
     print(f"Found {len(hdf5_files)} hdf5 files")
 
-    robot_point_client = RobotPointClient()
+    trace_client = TraceClient()
 
     
-    for hdf5_file in hdf5_files:  
+    for hdf5_file in tqdm.tqdm(hdf5_files):  
         data = h5py.File(hdf5_file, 'r')
         language_instruction = hdf5_file.name.split("-")[0].replace("_", " ")
         print(language_instruction)
@@ -272,10 +223,9 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
             wrist_image = data["observation/camera_rgb/wrist"]
 
         length = len(action_joint_position)
-        if length < 50:
-            continue
-        
+                
         record = False
+        reset_trace = True
         for idx in range(length):
             joint_states =  np.concatenate([state_joint_position[idx], [state_gripper_position[idx]]])
             joint_actions = np.concatenate([action_joint_position[idx], [action_gripper_position[idx]]])
@@ -292,44 +242,46 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
             
             if idx>0 and (is_noop(joint_actions, prev_joint_actions, threshold=1e-3) or \
                 is_noop(cartesian_actions, prev_cartesian_actions, threshold=1e-4, is_cartesian=True)):
-                print("noop, skipping")
+                # print("noop, skipping")
                 continue
             
             
-            if use_robotpoint:    
-                if idx in [0, length//2]: 
-                    try:           
-                        query_text = f"The task is {language_instruction}. Find relevant points on the image to perform the task."
-                        result = robot_point_client.query_robopoint(
-                            image=Image.fromarray(left_shoulder_image[idx]),
-                            query_text=query_text,
-                        )
-                        left_shoulder_structured_data = result["structured_data"]
-                        
-                        result = robot_point_client.query_robopoint(
-                            image=Image.fromarray(right_shoulder_image[idx]),
-                            query_text=query_text,
-                        )
-                        right_shoulder_structured_data = result["structured_data"]
-                        
-                        result = robot_point_client.query_robopoint(
-                            image=Image.fromarray(wrist_image[idx]),
-                            query_text=query_text,
-                        )
-                        wrist_structured_data = result["structured_data"]
-                        print(wrist_structured_data)
-                    except Exception as e:
-                        print(f"Error querying robopoint: {e}")
-                        continue
-                        
-                # visualize the results
-                left_shoulder_img = visualize_2d(Image.fromarray(left_shoulder_image[idx]), left_shoulder_structured_data["points"], scale=1)
-                right_shoulder_img = visualize_2d(Image.fromarray(right_shoulder_image[idx]), right_shoulder_structured_data["points"], scale=1)
-                wrist_img = visualize_2d(Image.fromarray(wrist_image[idx]), wrist_structured_data["points"], scale=1)
+            if use_trace:    
+                try:
+                    traced_left_shoulder_img = trace_client.query_trace(
+                        image=Image.fromarray(left_shoulder_image[idx]),
+                        task_description=language_instruction,
+                        which_shoulder="left",
+                        reset_trace=reset_trace,
+                    )
+                    
+                    traced_right_shoulder_img = trace_client.query_trace(
+                        image=Image.fromarray(right_shoulder_image[idx]),
+                        task_description=language_instruction,
+                        which_shoulder="right",
+                        reset_trace=reset_trace,
+                    )
+                    reset_trace = False
+                    if traced_left_shoulder_img is None:
+                        traced_left_shoulder_img = Image.fromarray(left_shoulder_image[idx])
+                    if traced_right_shoulder_img is None:
+                        traced_right_shoulder_img = Image.fromarray(right_shoulder_image[idx])
+
+                    
+                    # Image -> numpy array
+                    left_shoulder_img = np.array(traced_left_shoulder_img)
+                    right_shoulder_img = np.array(traced_right_shoulder_img)
+                    wrist_img = np.array(wrist_image[idx])
+               
+                    traced_left_shoulder_img.save(f"sandbox/traced_left_shoulder_image.png")
+                    traced_right_shoulder_img.save(f"sandbox/traced_right_shoulder_image.png")
                 
-                # left_shoulder_img.save(f"sandbox/left_shoulder_image_{idx}.png")
-                # right_shoulder_img.save(f"sandbox/right_shoulder_image_{idx}.png")
-                # wrist_img.save(f"sandbox/wrist_image_{idx}.png")                    
+                except Exception as e:
+                    print(f"Error querying tracevla: {e}")
+                    left_shoulder_img = left_shoulder_image[idx]
+                    right_shoulder_img = right_shoulder_image[idx]
+                    wrist_img = wrist_image[idx]
+                                 
             
             # if use_trace:
             #     pass
@@ -355,10 +307,10 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
             prev_joint_actions = joint_actions
             prev_cartesian_actions = cartesian_actions
             
-            # from PIL import Image
-            # Image.fromarray(left_shoulder_image[idx]).save(f"left_shoulder_image.png")
-            # Image.fromarray(right_shoulder_image[idx]).save(f"right_shoulder_image.png")
-            # Image.fromarray(wrist_image[idx]).save(f"wrist_image.png")
+            # Image.fromarray(left_shoulder_image[idx]).save(f"sandbox/left_shoulder_image.png")
+            # Image.fromarray(right_shoulder_image[idx]).save(f"sandbox/right_shoulder_image.png")
+            # Image.fromarray(wrist_image[idx]).save(f"sandbox/wrist_image.png")
+            input("...")
 
         if record:
             dataset.save_episode(task=language_instruction)

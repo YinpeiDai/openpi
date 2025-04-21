@@ -3,9 +3,9 @@ from pathlib import Path
 import numpy as np
 
 use_reticle = True
-data_dir = "/data/daiyp/crosshair/real_data/ball_in_drawer/"
+data_dir = "/data/daiyp/crosshair/real_data/fruits/"
 
-folder_name = "reticle_samples_drawer"
+folder_name = "reticle_samples_fruits"
 
 for hdf5_file in Path(data_dir).glob("*.hdf5"):                
     data = h5py.File(hdf5_file, 'r')
