@@ -414,7 +414,6 @@ class LeRobotRealRobotDataConfig(DataConfigFactory):
             repack_transforms=repack_transform,
             data_transforms=data_transforms,
             model_transforms=model_transforms,
-            use_quantile_norm=model_config.model_type == ModelType.PI0_FAST,
         )
 
 
@@ -594,9 +593,9 @@ _CONFIGS = [
                 prompt_from_task=True,
             ),
         ),
-        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=40_000, decay_lr=1e-6),
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_droid/params"),
-        num_train_steps=20_000,
+        num_train_steps=50_000,
     ),
     
     TrainConfig(
@@ -609,9 +608,9 @@ _CONFIGS = [
                 prompt_from_task=True,
             ),
         ),
-        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=40_000, decay_lr=1e-6),
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_droid/params"),
-        num_train_steps=20_000,
+        num_train_steps=50_000,
     ),
     TrainConfig(
         name="pi0_realrobot_long_horizon",
@@ -737,9 +736,10 @@ _CONFIGS = [
                 prompt_from_task=True,
             ),
         ),
-        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=30_000, decay_lr=1e-6),
+        # lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=30_000, decay_lr=1e-6),
         # Note that we load the pi0-FAST base model checkpoint here.
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        # weight_loader=weight_loaders.CheckpointWeightLoader("/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_fast_libero/pi0-fast-libero-final_v2_large_crosshair_dynamic_default_color_long/20000/params"),
         num_train_steps=30_000,
     ),
     TrainConfig(
