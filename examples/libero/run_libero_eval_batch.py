@@ -36,7 +36,7 @@ class Args:
     #################################################################################################################
     # Model server parameters
     #################################################################################################################
-    host: str = "0.0.0.0"
+    host: str = "localhost"
     port: int = 8000
     resize_size: int = 224
     replan_steps: int = 5
@@ -119,13 +119,22 @@ def eval_libero(args: Args) -> None:
         
         if args.use_reticle:
             print(f"Using reticle with configuration key: {args.reticle_config_key}")
-            config = CONFIG_DICT[args.reticle_config_key]
+            if args.reticle_config_key == "large_crosshair_dynamic_default_color_no_grasp_sense":
+                config = CONFIG_DICT["large_crosshair_dynamic_default_color"]
+                args.use_grasp_sense = False
+            else:
+                config = CONFIG_DICT[args.reticle_config_key]
             shooting_line_config = config["shooting_line"]
             scope_reticle_config = config["scope_reticle"]
             MAX_EE_TABLE_DIST = 0.4 # change this to 0.2 when evaluating on large_crosshair_dynamic_default_color_tilt
             FIXCAM_TOLERANCE = 18
             WSTCAM_TOLERANCE = 12
-            scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
+                    
+            if hasattr(scope_reticle_config, "line_length_cfg"):
+                scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
+            
+            if hasattr(scope_reticle_config, "circle_radius_cfg"):
+                scope_reticle_config.circle_radius_cfg.maxdist = MAX_EE_TABLE_DIST
             
             if args.use_grasp_sense:
                 reticle_builder = ReticleBuilder(

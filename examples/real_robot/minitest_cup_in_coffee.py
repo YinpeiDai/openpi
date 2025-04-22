@@ -8,9 +8,9 @@ np.set_printoptions(precision=5, suppress=True)
 
 
 
-left_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/left_shoulder_image_224.png"))
-right_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/right_shoulder_image_224.png"))
-wrist_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_coffee/wrist_image_224.png"))
+left_shoulder_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_coffee/left_shoulder_image_224.png"))
+right_shoulder_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_coffee/right_shoulder_image_224.png"))
+wrist_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_coffee/wrist_image_224.png"))
 instruction = "put the cup on the coffee machine"
 
 state = [-6.36629835e-02, -3.31839137e-02, -1.23551235e-01, -2.74614859e+00, 2.19897553e-01, 2.61483908e+00, -1.66412270e+00, 2.32637301e-03]
@@ -25,12 +25,12 @@ request_data = {
 }
 
 policy_client = websocket_client_policy.WebsocketClientPolicy(
-    host="141.212.115.116",
+    host="172.26.135.192",
     port=8001,
 )
 tstart = time.time()
 pred_action_chunk = policy_client.infer(request_data)["actions"]
 tend = time.time()
 print(f"Time taken: {tend - tstart} seconds")
-print(pred_action_chunk[0]) #  [ 0.05286577  0.48139466 -0.06828832 -1.55042222 -0.13999516  2.03134505 0.68084685  1. ]
+print(pred_action_chunk[0]) # [-0.07001272 -0.02224026 -0.12195967 -2.75122962  0.25098871  2.64748625 -1.74296515  1.        ]
 print(pred_action_chunk.shape)
