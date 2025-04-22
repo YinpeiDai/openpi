@@ -3,6 +3,7 @@ from collections.abc import Sequence
 import dataclasses
 import enum
 import logging
+import os
 import pathlib
 from typing import Generic, TypeVar
 
@@ -30,12 +31,24 @@ class ModelType(enum.Enum):
     PI0_FAST = "pi0_fast"
 
 
-# The model always expects these images
-IMAGE_KEYS = (
-    "base_0_rgb",
-    "left_wrist_0_rgb",
-    "right_wrist_0_rgb",
-)
+USE_DEPTH = os.environ.get("Pi0_USE_DEPTH", "False")
+print(f"USE_DEPTH: {USE_DEPTH}")
+# Pi0_USE_DEPTH=True CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi0_realrobot_depth --exp-name=xxxxx --batch-size=2 --overwrite  --lerobot_repo_id  realrobot_alltask_depth
+if USE_DEPTH:
+    IMAGE_KEYS = (
+        "base_0_rgb",
+        "left_wrist_0_rgb",
+        "right_wrist_0_rgb",
+        "base_0_depth",
+        "left_wrist_0_depth",
+        "right_wrist_0_depth",
+    )
+else:
+    IMAGE_KEYS = (
+        "base_0_rgb",
+        "left_wrist_0_rgb",
+        "right_wrist_0_rgb",
+    )
 
 
 # This may need change if we release a small model.
