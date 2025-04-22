@@ -28,6 +28,20 @@ class RobotEnv:
         #     "wrist_image": wrist_image,
         #     "state": joint_states, # joint position, gripper position
         # }
+        
+        ##   Depth images Processing
+        # # convert depth to gray rgb image 
+        # left_shoulder_depth_image = np.repeat(left_shoulder_depth_image[:, :, np.newaxis], 3, axis=2)
+        # right_shoulder_depth_image = np.repeat(right_shoulder_depth_image[:, :, np.newaxis], 3, axis=2)
+        # wrist_depth_image = np.repeat(wrist_depth_image[:, :, np.newaxis], 3, axis=2)
+        
+        # left_shoulder_depth_image = (left_shoulder_depth_image - np.min(left_shoulder_depth_image)) / (min(np.max(left_shoulder_depth_image),3) - np.min(left_shoulder_depth_image))
+        # right_shoulder_depth_image = (right_shoulder_depth_image - np.min(right_shoulder_depth_image)) / (min(np.max(right_shoulder_depth_image),3) - np.min(right_shoulder_depth_image))
+        # wrist_depth_image = (wrist_depth_image - np.min(wrist_depth_image)) / (min(np.max(wrist_depth_image),3) - np.min(wrist_depth_image))
+        
+        # left_shoulder_depth_image = (left_shoulder_depth_image * 255).astype(np.uint8)
+        # right_shoulder_depth_image = (right_shoulder_depth_image * 255).astype(np.uint8)
+        # wrist_depth_image = (wrist_depth_image * 255).astype(np.uint8)
         pass
     
     def step(self, action):
@@ -116,6 +130,18 @@ def main(args: Args):
                             curr_obs["right_shoulder_image"], 224, 224
                         ),
                         "observation/wrist_image": image_tools.resize_with_pad(curr_obs["wrist_image"], 224, 224),
+                        
+                        # # Depth images Input
+                        # "observation/left_shoulder_depth": image_tools.resize_with_pad(
+                        #     curr_obs["left_shoulder_depth"], 224, 224
+                        # ),
+                        # "observation/right_shoulder_depth": image_tools.resize_with_pad(
+                        #     curr_obs["right_shoulder_depth"], 224, 224
+                        # ),
+                        # "observation/wrist_depth": image_tools.resize_with_pad(
+                        #     curr_obs["wrist_depth"], 224, 224
+                        # ),
+                        
                         "observation/state": curr_obs["state"],
                         "prompt": instruction,
                     }
