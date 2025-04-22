@@ -9,9 +9,9 @@ np.set_printoptions(precision=5, suppress=True)
 
 
 
-left_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_egg/left_shoulder_image_236.png"))
-right_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_egg/right_shoulder_image_236.png"))
-wrist_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples_egg/wrist_image_236.png"))
+left_shoulder_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_egg/left_shoulder_image_236.png"))
+right_shoulder_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_egg/right_shoulder_image_236.png"))
+wrist_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_egg/wrist_image_236.png"))
 instruction = "put the egg inside the egg carton"
 
 state = [-0.00725937,  0.13311845, -0.04766899, -2.08065104,  0.02973011,  2.02222753,  1.13670385,  0.88123362]
@@ -26,7 +26,7 @@ request_data = {
 }
 
 policy_client = websocket_client_policy.WebsocketClientPolicy(
-    host="141.212.115.116",
+    host="localhost",
     port=8001,
 )
 tstart = time.time()

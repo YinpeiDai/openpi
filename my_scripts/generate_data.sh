@@ -19,6 +19,10 @@ python examples/libero/convert_libero_data_to_lerobot.py --data_dir /home/ubuntu
 
 
 
+~/micromamba/envs/openvla/lib/python3.10/site-packages/robosuite/models/assets/robots/panda/robot.xml
+<camera mode="fixed" name="eye_in_hand" pos="0.1 0 0.05" quat="-0.270598  0.653281 -0.653281  0.270598" fovy="75"/>
+
+
 
 
 large_bullseye_dynamic_default_color
@@ -38,13 +42,15 @@ uv run scripts/compute_norm_stats.py --config-name pi0_fast_libero --lerobot-rep
 
 
 # comute stats for my own dataset
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 uv run scripts/compute_norm_stats.py --config-name pi0_fast_libero --lerobot-repo-id large_crosshair_dynamic_default_color 
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 uv run scripts/compute_norm_stats.py --config-name pi0_libero --lerobot-repo-id large_crosshair_dynamic_default_color 
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/compute_norm_stats.py --config-name pi0_fast_libero --lerobot-repo-id final_v2_small_crosshair_dynamic_default_color 
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/compute_norm_stats.py --config-name pi0_libero --lerobot-repo-id final_v2_large_crosshair_dynamic_default_color 
 
 
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 python scripts/compute_norm_stats.py --config-name pi0_libero --lerobot-repo-id large_crosshair_dynamic_default_color_no_grasp_sense
+cp -r lerobot_d_real/realrobot_all_tasks* ~/.cache/lerobot_data/
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/compute_norm_stats.py --config-name pi0_fast_realrobot --lerobot-repo-id realrobot_all_tasks_reticle 
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/compute_norm_stats.py --config-name pi0_realrobot --lerobot-repo-id realrobot_all_tasks_reticle 
 
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.2 uv run examples/libero/convert_libero_data_to_lerobot.py --data_dir /home/daiyp/openpi/tensorflow_datasets/final_v2_small_crosshair_dynamic_default_color --repo_id final_v2_small_crosshair_dynamic_default_color
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.1 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/compute_norm_stats.py --config-name pi0_realrobot--lerobot-repo-id realrobot_robopointpoint
 
 # rlbench
 uv run scripts/compute_norm_stats.py --config-name pi0_fast_rlbench --lerobot-repo-id rlbench_grpsen_joinpos

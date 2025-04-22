@@ -12,4 +12,5 @@
         "/home/daiyp/openpi/third_party/libero",
         "/home/daiyp/openpi/third_party/scopereticle/src"
     ],
+    "git.ignoreLimitWarning": true
 }

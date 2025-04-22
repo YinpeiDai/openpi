@@ -144,7 +144,7 @@ def main(args: Args) -> None:
 
     server = websocket_policy_server.WebsocketPolicyServer(
         policy=policy,
-        host="localhost",
+        host="0.0.0.0",
         port=args.port,
         metadata=policy_metadata,
     )
