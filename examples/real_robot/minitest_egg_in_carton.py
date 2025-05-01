@@ -27,7 +27,7 @@ request_data = {
 
 policy_client = websocket_client_policy.WebsocketClientPolicy(
     host="localhost",
-    port=8001,
+    port=8002,
 )
 tstart = time.time()
 pred_action_chunk = policy_client.infer(request_data)["actions"]

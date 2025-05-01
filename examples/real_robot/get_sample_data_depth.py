@@ -6,6 +6,14 @@ use_reticle = False
 data_dir = "/data/daiyp/crosshair/real_data/fruits/"
 
 folder_name = "reticle_samples_fruits_depth"
+folder_name = "samples_fruits_depth"
+
+
+def convert_depth_to_rgb(depth_image):
+    depth_image = np.repeat(depth_image[:, :, np.newaxis], 3, axis=2)
+    depth_image = (depth_image - np.min(depth_image)) / (min(np.max(depth_image),3) - np.min(depth_image))
+    depth_image = (depth_image * 255).astype(np.uint8)
+    return depth_image
 
 for hdf5_file in Path(data_dir).glob("*.hdf5"):                
     data = h5py.File(hdf5_file, 'r')
@@ -74,9 +82,15 @@ for hdf5_file in Path(data_dir).glob("*.hdf5"):
         Image.fromarray(right_shoulder_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/right_shoulder_image_{idx}.png")
         Image.fromarray(wrist_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/wrist_image_{idx}.png")
         
+<<<<<<< HEAD
         Image.fromarray(left_shoulder_depth_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/left_shoulder_depth_image_{idx}.png")
         Image.fromarray(right_shoulder_depth_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/right_shoulder_depth_image_{idx}.png")
         Image.fromarray(wrist_depth_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/wrist_depth_image_{idx}.png")   
+=======
+        Image.fromarray(convert_depth_to_rgb(left_shoulder_depth[idx])).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/left_shoulder_depth_image_{idx}.png")
+        Image.fromarray(convert_depth_to_rgb(right_shoulder_depth[idx])).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/right_shoulder_depth_image_{idx}.png")
+        Image.fromarray(convert_depth_to_rgb(wrist_depth[idx])).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/wrist_depth_image_{idx}.png")   
+>>>>>>> 3b42cfc88cbd172bb4e8791a95c975a775c81e11
         
         # store joint_states and joint_actions into a text file
         with open(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/joint_states_{idx}.txt", "w") as f:

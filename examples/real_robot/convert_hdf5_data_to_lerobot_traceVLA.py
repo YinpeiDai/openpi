@@ -188,9 +188,9 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
     )
     
     # find all hdf5 files in the data_dir, recursively
-    hdf5_files = list(Path(data_dir).glob("**/*.hdf5")) 
-    exclude_dirs = ["tennis_ball_in_bowl", "play", "v2"]
-    hdf5_files = [file for file in hdf5_files if not any(exclude_dir in str(file) for exclude_dir in exclude_dirs)]
+    hdf5_files = list(Path(data_dir).glob("tennis_ball_in_bowl/*.hdf5")) 
+    # exclude_dirs = ["tennis_ball_in_bowl", "play", "v2"]
+    # hdf5_files = [file for file in hdf5_files if not any(exclude_dir in str(file) for exclude_dir in exclude_dirs)]
     print(f"Found {len(hdf5_files)} hdf5 files")
 
     trace_client = TraceClient()
@@ -261,13 +261,21 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
                         which_shoulder="right",
                         reset_trace=reset_trace,
                     )
+                    traced_wrist_img = trace_client.query_trace(
+                        image=Image.fromarray(wrist_image[idx]),
+                        task_description=language_instruction,
+                        which_shoulder="wrist",
+                        reset_trace=reset_trace,
+                    )
                     reset_trace = False
+                    # previous 10 steps are not traced, so use the original image
                     if traced_left_shoulder_img is None:
                         traced_left_shoulder_img = Image.fromarray(left_shoulder_image[idx])
                     if traced_right_shoulder_img is None:
                         traced_right_shoulder_img = Image.fromarray(right_shoulder_image[idx])
+                    if traced_wrist_img is None:
+                        traced_wrist_img = Image.fromarray(wrist_image[idx])
 
-                    
                     # Image -> numpy array
                     left_shoulder_img = np.array(traced_left_shoulder_img)
                     right_shoulder_img = np.array(traced_right_shoulder_img)
@@ -275,6 +283,7 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
                
                     traced_left_shoulder_img.save(f"sandbox/traced_left_shoulder_image.png")
                     traced_right_shoulder_img.save(f"sandbox/traced_right_shoulder_image.png")
+                    traced_wrist_img.save(f"sandbox/traced_wrist_image.png")
                 
                 except Exception as e:
                     print(f"Error querying tracevla: {e}")

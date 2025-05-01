@@ -25,7 +25,7 @@ request_data = {
 }
 
 policy_client = websocket_client_policy.WebsocketClientPolicy(
-    host="172.26.135.192",
+    host="141.212.115.116",
     port=8001,
 )
 tstart = time.time()
