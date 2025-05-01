@@ -21,6 +21,11 @@ from crosshair.reticle_builder import ReticleBuilder
 from crosshair.config import CONFIG_DICT
 from robosuite.utils.camera_utils import get_camera_extrinsic_matrix, get_camera_intrinsic_matrix, get_real_depth_map
 
+from scipy.spatial.transform import Rotation as R
+
+RANDOM_NOISE = False
+NO_RETRICLE = False
+print("NO_RETRICLE:", NO_RETRICLE, "RANDOM_NOISE:", RANDOM_NOISE)
 
 LIBERO_DUMMY_ACTION = [0.0] * 6 + [-1.0]
 LIBERO_ENV_RESOLUTION = 256  # resolution used to render training data
@@ -224,7 +229,16 @@ def eval_libero(args: Args) -> None:
                                     gripper_qpos=deepcopy(obs["robot0_gripper_qpos"]),
                                 )
                                         
-                            else: 
+                            else:   
+                                if RANDOM_NOISE:
+                                    gripper_pos =  obs["robot0_eef_pos"] + np.random.uniform(-0.06, 0.06, 3)
+                                    # add random rotation
+                                    _quat = R.from_euler("xyz", np.random.uniform(-0.15, 0.15, 3), degrees=False) * R.from_quat(obs["robot0_eef_quat"])
+                                    gripper_quat = _quat.as_quat()
+                                else:
+                                    gripper_pos = deepcopy(obs["robot0_eef_pos"])
+                                    gripper_quat = deepcopy(obs["robot0_eef_quat"])
+                                    
                                 front_depth = np.flipud(obs["agentview_depth"]).squeeze()
                                 front_depth_real = get_real_depth_map(env.sim, front_depth)
                                 
@@ -233,8 +247,8 @@ def eval_libero(args: Args) -> None:
                                     camera_depth=front_depth_real,
                                     camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
                                     camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_pos=gripper_pos,
+                                    gripper_quat=gripper_quat,
                                     gripper_open=is_open(obs["robot0_gripper_qpos"]),
                                     image_height=LIBERO_ENV_RESOLUTION,
                                     image_width=LIBERO_ENV_RESOLUTION,
@@ -244,18 +258,23 @@ def eval_libero(args: Args) -> None:
                                 wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
                                 wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
                                 
+                                
                                 robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
                                     wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
                                     wrist_camera_depth=wrist_depth_real,
                                     wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
                                     wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_pos=gripper_pos,
+                                    gripper_quat=gripper_quat,
                                     gripper_open=is_open(obs["robot0_gripper_qpos"]),
                                     image_height=LIBERO_ENV_RESOLUTION,
                                     image_width=LIBERO_ENV_RESOLUTION,
                                     tolerance=WSTCAM_TOLERANCE,
                                 )
+                                
+                                if NO_RETRICLE:
+                                    agentview_rgb = np.flipud(obs["agentview_image"]).astype(np.uint8)
+                                    robot0_eye_in_hand_rgb = np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8)
                                 
                             # agentview_rgb = agentview_rgb[:, ::-1]
                             # robot0_eye_in_hand_rgb = robot0_eye_in_hand_rgb[:, ::-1]

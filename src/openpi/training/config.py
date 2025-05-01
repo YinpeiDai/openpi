@@ -653,7 +653,7 @@ _CONFIGS = [
                 prompt_from_task=True,
             ),
         ),
-        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=40_000, decay_lr=1e-6),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=50_000, decay_lr=1e-6),
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=50_000,
     ),
@@ -669,7 +669,7 @@ _CONFIGS = [
             ),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=40_000, decay_lr=1e-6),
-        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_droid/params"),
         num_train_steps=50_000,
     ),
     
@@ -748,8 +748,7 @@ _CONFIGS = [
         ),
         # Here you define which pre-trained checkpoint you want to load to initialize the model.
         # This should match the model config you chose above -- i.e. in this case we use the pi0 base model.
-        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_droid/params"),
-        # weight_loader=weight_loaders.CheckpointWeightLoader("/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_libero/pi0-libero-final_v2_large_crosshair_dynamic_default_color_long/16000/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
         # Below you can define other hyperparameters like the learning rate, number of training steps, etc.
         # Check the base TrainConfig class for a full list of available hyperparameters.
         num_train_steps=30_000,
