@@ -5,6 +5,7 @@ import numpy as np
 use_reticle = False
 data_dir = "/data/daiyp/crosshair/real_data/fruits/"
 
+folder_name = "reticle_samples_fruits_depth"
 folder_name = "samples_fruits_depth"
 
 
@@ -39,6 +40,18 @@ for hdf5_file in Path(data_dir).glob("*.hdf5"):
     right_shoulder_depth = data["observation/camera_depth/right_shoulder"]
     wrist_depth = data["observation/camera_depth/wrist"]
     
+    # convert depth to gray rgb image 
+    left_shoulder_depth_image = np.repeat(left_shoulder_depth[:, :, np.newaxis], 3, axis=2)
+    right_shoulder_depth_image = np.repeat(right_shoulder_depth[:, :, np.newaxis], 3, axis=2)
+    wrist_depth_image = np.repeat(wrist_depth[:, :, np.newaxis], 3, axis=2)
+    
+    left_shoulder_depth_image = (left_shoulder_depth_image - np.min(left_shoulder_depth_image)) / (min(np.max(left_shoulder_depth_image),3) - np.min(left_shoulder_depth_image))
+    right_shoulder_depth_image = (right_shoulder_depth_image - np.min(right_shoulder_depth_image)) / (min(np.max(right_shoulder_depth_image),3) - np.min(right_shoulder_depth_image))
+    wrist_depth_image = (wrist_depth_image - np.min(wrist_depth_image)) / (min(np.max(wrist_depth_image),3) - np.min(wrist_depth_image))
+    
+    left_shoulder_depth_image = (left_shoulder_depth_image * 255).astype(np.uint8)
+    right_shoulder_depth_image = (right_shoulder_depth_image * 255).astype(np.uint8)
+    wrist_depth_image = (wrist_depth_image * 255).astype(np.uint8)
 
     length = len(action_joint_position)
     
@@ -69,9 +82,15 @@ for hdf5_file in Path(data_dir).glob("*.hdf5"):
         Image.fromarray(right_shoulder_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/right_shoulder_image_{idx}.png")
         Image.fromarray(wrist_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/wrist_image_{idx}.png")
         
+<<<<<<< HEAD
+        Image.fromarray(left_shoulder_depth_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/left_shoulder_depth_image_{idx}.png")
+        Image.fromarray(right_shoulder_depth_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/right_shoulder_depth_image_{idx}.png")
+        Image.fromarray(wrist_depth_image[idx]).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/wrist_depth_image_{idx}.png")   
+=======
         Image.fromarray(convert_depth_to_rgb(left_shoulder_depth[idx])).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/left_shoulder_depth_image_{idx}.png")
         Image.fromarray(convert_depth_to_rgb(right_shoulder_depth[idx])).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/right_shoulder_depth_image_{idx}.png")
         Image.fromarray(convert_depth_to_rgb(wrist_depth[idx])).save(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/wrist_depth_image_{idx}.png")   
+>>>>>>> 3b42cfc88cbd172bb4e8791a95c975a775c81e11
         
         # store joint_states and joint_actions into a text file
         with open(f"/home/daiyp/openpi/examples/real_robot/{folder_name}/joint_states_{idx}.txt", "w") as f:

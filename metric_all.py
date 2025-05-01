@@ -59,4 +59,7 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_rows', None)
 
 df = pd.DataFrame(results)
+df['mean'] = df.mean(axis=1) 
+# save 3 decimal places
+df = df.round(3)
 print(df)

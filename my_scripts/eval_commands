@@ -1,0 +1,40 @@
+pi0 w/o reticle,  pi0 w/ reticle
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --port 8001  --lerobot-repo-id realrobot_all_tasks  policy:checkpoint --policy.config=pi0_realrobot --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_realrobot/lambda-pi0-realrobot_all_tasks/49999     
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --port 8002  --lerobot-repo-id realrobot_all_tasks_reticle  policy:checkpoint --policy.config=pi0_realrobot --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_realrobot/lambda-pi0-realrobot_all_tasks_reticle/49999
+
+
+pi0-fast w/o reticle base 20k, pi0-fast w/ reticle base 20k
+
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.24 CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --port 8003  --lerobot-repo-id realrobot_all_tasks  policy:checkpoint --policy.config=pi0_fast_realrobot --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_fast_realrobot/lambda-pi0-fast-realrobot_all_tasks-base/20000
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.24 CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --port 8004  --lerobot-repo-id realrobot_all_tasks_reticle  policy:checkpoint --policy.config=pi0_fast_realrobot --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_fast_realrobot/lambda-pi0-fast-realrobot_all_tasks_reticle-base/20000
+
+
+pi0-pretrain
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.45 python scripts/serve_policy.py --port 8002  --lerobot-repo-id realrobot_all_tasks_reticle  policy:checkpoint --policy.config=pi0_realrobot --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_realrobot/lambda-pi0-realrobot_all_tasks_reticle-pretrain/49999
+
+
+pi0-fast droid
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.24 CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --port 8001  --lerobot-repo-id realrobot_all_tasks  policy:checkpoint --policy.config=pi0_fast_realrobot --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_fast_realrobot/lambda-pi0-fast-realrobot_all_tasks/20000
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.24 CUDA_VISIBLE_DEVICES=0 uv run scripts/serve_policy.py --port 8002  --lerobot-repo-id realrobot_all_tasks_reticle  policy:checkpoint --policy.config=pi0_fast_realrobot --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_fast_realrobot/lambda-pi0-fast-realrobot_all_tasks_reticle/20000
+
+
+pi0-depthimage
+Pi0_USE_DEPTH=True  XLA_PYTHON_CLIENT_MEM_FRACTION=0.49 python scripts/serve_policy.py --port 8001  --lerobot-repo-id realrobot_alltask_depth  policy:checkpoint --policy.config=pi0_realrobot_depth --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_realrobot_depth/lambda-pi0-realrobot_depth/49999
+Pi0_USE_DEPTH=True  XLA_PYTHON_CLIENT_MEM_FRACTION=0.49 python scripts/serve_policy.py --port 8002  --lerobot-repo-id realrobot_alltask_depth  policy:checkpoint --policy.config=pi0_realrobot_depth --policy.dir=/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_realrobot_depth/lambda-pi0-realrobot_depth-droidckpt/49999
+
+
+
+OpenVLA-OFT
+CUDA_VISIBLE_DEVICES=1 python /home/daiyp/openvla-oft/vla-scripts/deploy.py   --port 8004   --unnorm_key real_robot_joint   --use_proprio False   --pretrained_checkpoint /home/daiyp/openvla-oft/runs/ckpts/openvla-realrobot_all_tasks_jointpos-noprior/runs--50000_chkpt
+
+
+
+
+
+
+
+
+
+
+
+

@@ -34,7 +34,7 @@ class ModelType(enum.Enum):
 USE_DEPTH = os.environ.get("Pi0_USE_DEPTH", "False")
 print(f"USE_DEPTH: {USE_DEPTH}")
 # Pi0_USE_DEPTH=True CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi0_realrobot_depth --exp-name=xxxxx --batch-size=2 --overwrite  --lerobot_repo_id  realrobot_alltask_depth
-if USE_DEPTH:
+if USE_DEPTH == "True":
     IMAGE_KEYS = (
         "base_0_rgb",
         "left_wrist_0_rgb",
@@ -49,6 +49,15 @@ else:
         "left_wrist_0_rgb",
         "right_wrist_0_rgb",
     )
+print(f"IMAGE_KEYS: {IMAGE_KEYS}")
+
+
+USE_ZERO_STATE = os.environ.get("Pi0_USE_ZERO_STATE", "False")
+print(f"USE_ZERO_STATE: {USE_ZERO_STATE}")
+if USE_ZERO_STATE == "True":
+    ZERO_STATE = True
+else:
+    ZERO_STATE = False
 
 
 # This may need change if we release a small model.
@@ -203,10 +212,16 @@ def preprocess_observation(
         else:
             out_masks[key] = jnp.asarray(observation.image_masks[key])
 
+    # make state a zero array
+    if ZERO_STATE:
+        state = jnp.zeros(observation.state.shape)
+    else:
+        state = observation.state
+    
     return Observation(
         images=out_images,
         image_masks=out_masks,
-        state=observation.state,
+        state=state,
         tokenized_prompt=observation.tokenized_prompt,
         tokenized_prompt_mask=observation.tokenized_prompt_mask,
         token_ar_mask=observation.token_ar_mask,

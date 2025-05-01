@@ -17,6 +17,9 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=0.99 /home/ubuntu/chailab/daiyp/micromamba/envs/o
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.99 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/train.py pi0_fast_libero --exp-name=lambda-pi0-fast-libero-final_v2_large_crosshair_dynamic_default_color-qtnorm --batch-size=32 --overwrite --lerobot_repo_id final_v2_large_crosshair_dynamic_default_color --no-apply-delta --num_workers=0 --use-quantile-norm
 
 
+Pi0_USE_ZERO_STATE=True CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_MEM_FRACTION=0.95 python scripts/train.py pi0_libero  --exp-name=lambda-pi0-libero-zerostate-reticle-grad2  --batch-size=32 --overwrite  --lerobot_repo_id large_crosshair_dynamic_default_color_new --no-apply-delta --grad_accum_steps 2 --keep_period 10000
+
+
 # pi0_libero
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.99 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/train.py pi0_libero --exp-name=lambda-pi0-libero-final_v2_large_crosshair_dynamic_default_color-long-quantilenorm --batch-size=32 --overwrite --lerobot_repo_id final_v2_large_crosshair_dynamic_default_color --no-apply-delta --num_workers=0
 
@@ -51,6 +54,10 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=0.95 uv run scripts/train.py pi0_libero --exp-nam
 
 # run on real robot
 CUDA_VISIBLE_DEVICES=0,1 XLA_PYTHON_CLIENT_MEM_FRACTION=0.8 uv run scripts/train.py pi0_fast_realrobot --exp-name=xxxxx --batch-size=4 --overwrite --fsdp_devices=2 --lerobot_repo_id realrobot_pickpalce_10demos
-=======
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.98 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/train.py pi0_fast_realrobot --exp-name=lambda-pi0-fast-realrobot_all_tasks --batch-size=32 --overwrite --lerobot_repo_id realrobot_all_tasks --num_workers=0 --keep_period=10000
->>>>>>> Stashed changes
+
+
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.98 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/train.py pi0_fast_realrobot --exp-name=lambda-pi0-fast-realrobot_all_tasks --batch-size=32 --overwrite --lerobot_repo_id realrobot_all_tasks --num_workers=0
+
+
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.98 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/train.py pi0_realrobot --exp-name=lambda-pi0-realrobot_tracevla-droid --batch-size=32 --overwrite --lerobot_repo_id realrobot_tracevla --num_workers=0 --keep_period=10000 --save_interval=5000
+
