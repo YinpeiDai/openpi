@@ -639,7 +639,7 @@ _CONFIGS = [
             ),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=40_000, decay_lr=1e-6),
-        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_droid/params"),
         num_train_steps=50_000,
     ),
     

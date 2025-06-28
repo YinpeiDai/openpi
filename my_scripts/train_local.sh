@@ -56,7 +56,7 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=0.95 uv run scripts/train.py pi0_libero --exp-nam
 CUDA_VISIBLE_DEVICES=0,1 XLA_PYTHON_CLIENT_MEM_FRACTION=0.8 uv run scripts/train.py pi0_fast_realrobot --exp-name=xxxxx --batch-size=4 --overwrite --fsdp_devices=2 --lerobot_repo_id realrobot_pickpalce_10demos
 
 
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.98 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/train.py pi0_fast_realrobot --exp-name=lambda-pi0-fast-realrobot_all_tasks --batch-size=32 --overwrite --lerobot_repo_id realrobot_all_tasks --num_workers=0
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.98 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/train.py pi0_fast_realrobot --exp-name=lambda-pi0-fast-realrobot_all_tasks --batch-size=32 --overwrite --lerobot_repo_id realrobot_all_tasks
 
 
 XLA_PYTHON_CLIENT_MEM_FRACTION=0.98 /home/ubuntu/chailab/daiyp/micromamba/envs/openpi/bin/python scripts/train.py pi0_realrobot --exp-name=lambda-pi0-realrobot_tracevla-droid --batch-size=32 --overwrite --lerobot_repo_id realrobot_tracevla --num_workers=0 --keep_period=10000 --save_interval=5000
