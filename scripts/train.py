@@ -87,6 +87,8 @@ def init_train_state(
 ) -> tuple[training_utils.TrainState, Any]:
     tx = _optimizer.create_optimizer(config.optimizer, config.lr_schedule, weight_decay_mask=None)
 
+    if config.grad_accum_steps > 1:
+         tx = optax.chain(optax.scale_by_schedule(lambda step: 1 / config.grad_accum_steps), tx)
 
     def init(rng: at.KeyArrayLike, partial_params: at.Params | None = None) -> training_utils.TrainState:
         rng, model_rng = jax.random.split(rng)
@@ -200,6 +202,10 @@ def main(config: _config.TrainConfig):
         logging.info(f"LeRobot repo ID: {config.lerobot_repo_id}")
         object.__setattr__(config.data, "repo_id", config.lerobot_repo_id)
         object.__setattr__(config.data.base_config, "local_files_only", True)
+    
+    if config.use_quantile_norm:
+        logging.info(f"~~~~ Using quantile norm ~~~~~~")
+        object.__setattr__(config.data.base_config, "use_quantile_norm", config.use_quantile_norm)
         
     logging.info(f"Using delta: {config.apply_delta}")
     object.__setattr__(config.data, "apply_delta", config.apply_delta)
@@ -263,10 +269,11 @@ def main(config: _config.TrainConfig):
 
     infos = []
     for step in pbar:
-        with sharding.set_mesh(mesh):
-            train_state, info = ptrain_step(train_rng, train_state, batch)
-        infos.append(info)
-        batch = next(data_iter)
+        for _ in range(config.grad_accum_steps):
+             with sharding.set_mesh(mesh):
+                 train_state, info = ptrain_step(train_rng, train_state, batch)
+             infos.append(info)
+             batch = next(data_iter)
             
         if step % config.log_interval == 0:
             stacked_infos = common_utils.stack_forest(infos)

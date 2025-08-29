@@ -19,6 +19,6 @@ export PYTHONPATH=$PYTHONPATH:$PWD/third_party/libero
 
 source examples/libero/.venv/bin/activate
 # set symbolic link
-ln -s /nfs/turbo/coe-chaijy-unreplicated/pre-trained-weights/VLA/openpi  /home/daiyp/.cache/openpi
+ln -s /nfs/turbo/coe-chaijy-unreplicated/pre-trained-weights/VLA/openpi /home/daiyp/.cache/openpi
 
 ln -s  /nfs/turbo/coe-chaijy-unreplicated/daiyp/openpi/data  /home/daiyp/openpi/runs

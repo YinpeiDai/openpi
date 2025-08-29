@@ -22,6 +22,7 @@ import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
 import openpi.policies.rlbench_policy as rlbench_policy
 import openpi.policies.real_robot_policy as real_robot_policy
+import openpi.policies.real_robot_depth_policy as real_robot_depth_policy
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.optimizer as _optimizer
@@ -415,9 +416,52 @@ class LeRobotRealRobotDataConfig(DataConfigFactory):
             repack_transforms=repack_transform,
             data_transforms=data_transforms,
             model_transforms=model_transforms,
-            use_quantile_norm=model_config.model_type == ModelType.PI0_FAST,
         )
 
+
+
+@dataclasses.dataclass(frozen=True)
+class LeRobotRealRobotDepthDataConfig(DataConfigFactory):
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation/left_shoulder_image": "left_shoulder_image",
+                        "observation/right_shoulder_image": "right_shoulder_image",
+                        "observation/wrist_image": "wrist_image",
+                        "observation/left_shoulder_depth": "left_shoulder_depth",
+                        "observation/right_shoulder_depth": "right_shoulder_depth",
+                        "observation/wrist_depth": "wrist_depth",
+                        "observation/state": "state",
+                        "actions": "actions",
+                        "prompt": "prompt",
+                    }
+                )
+            ]
+        )
+
+        data_transforms = _transforms.Group(
+            inputs=[real_robot_depth_policy.RealRobotDepthInputs(action_dim=model_config.action_dim, model_type=model_config.model_type)],
+            outputs=[real_robot_depth_policy.RealRobotDepthOutputs()],
+        )
+        print("!!!! We Always apply delta transform on actions !!!!!")
+        
+        delta_action_mask = _transforms.make_bool_mask(7, -1)
+        data_transforms = data_transforms.push(
+            inputs=[_transforms.DeltaActions(delta_action_mask)],
+            outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+        )
+
+        model_transforms = ModelTransformFactory()(model_config)
+
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
 
 @dataclasses.dataclass(frozen=True)
 class TrainConfig:
@@ -490,6 +534,8 @@ class TrainConfig:
     lerobot_repo_id: str | None = None
     
     apply_delta: bool = True
+    
+    use_quantile_norm: bool = False
 
     @property
     def assets_dirs(self) -> pathlib.Path:
@@ -509,6 +555,15 @@ class TrainConfig:
         return nnx.All(nnx.Param, nnx.Not(self.freeze_filter))
 
     def __post_init__(self) -> None:
+        if self.grad_accum_steps > 1:
+             if self.batch_size % self.grad_accum_steps != 0:
+                 raise ValueError(f"Global Batch size must be divisible by grad_accum_steps. Got {self.batch_size} over {self.grad_accum_steps} steps")
+             object.__setattr__(
+                 self,
+                 "batch_size",
+                 self.batch_size // self.grad_accum_steps
+             )
+             logging.info(f"Batch size adjusted to {self.batch_size} since grad_accum_steps is {self.grad_accum_steps}")
         if self.resume and self.overwrite:
             raise ValueError("Cannot resume and overwrite at the same time.")
 
@@ -585,9 +640,9 @@ _CONFIGS = [
                 use_quantile_norm=True,
             ),
         ),
-        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=40_000, decay_lr=1e-6),
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_droid/params"),
-        num_train_steps=20_000,
+        num_train_steps=50_000,
     ),
     
     TrainConfig(
@@ -599,6 +654,36 @@ _CONFIGS = [
                 local_files_only=True,
                 prompt_from_task=True,
                 use_quantile_norm=True,
+            ),
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=50_000, decay_lr=1e-6),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=50_000,
+    ),
+    
+    TrainConfig(
+        name="pi0_realrobot_depth",
+        model=pi0.Pi0ConfigDepth(action_horizon=10),
+        data=LeRobotRealRobotDepthDataConfig(
+            repo_id="real_robot_data",
+            base_config=DataConfig(
+                local_files_only=True,
+                prompt_from_task=True,
+            ),
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=40_000, decay_lr=1e-6),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_droid/params"),
+        num_train_steps=50_000,
+    ),
+    
+    TrainConfig(
+        name="pi0_realrobot_long_horizon",
+        model=pi0.Pi0Config(action_horizon=30),
+        data=LeRobotRealRobotDataConfig(
+            repo_id="real_robot_data",
+            base_config=DataConfig(
+                local_files_only=True,
+                prompt_from_task=True,
             ),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
@@ -661,7 +746,7 @@ _CONFIGS = [
                 # This flag determines whether we load the prompt (i.e. the task instruction) from the
                 # ``task`` field in the LeRobot dataset. If set to True, the prompt will show up in
                 # a field called ``prompt`` in the input dict. The recommended setting is True.
-                prompt_from_task=True,
+                prompt_from_task=True
             ),
         ),
         # Here you define which pre-trained checkpoint you want to load to initialize the model.
@@ -716,9 +801,14 @@ _CONFIGS = [
                 use_quantile_norm=True
             ),
         ),
+<<<<<<< HEAD
         lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=30_000, decay_lr=1e-6),
+=======
+        # lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=30_000, decay_lr=1e-6),
+>>>>>>> 7200963c1972700199011dbcea9904fc3d2f94ad
         # Note that we load the pi0-FAST base model checkpoint here.
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
+        # weight_loader=weight_loaders.CheckpointWeightLoader("/home/ubuntu/chailab/daiyp/openpi/runs/ckpts/pi0_fast_libero/pi0-fast-libero-final_v2_large_crosshair_dynamic_default_color_long/20000/params"),
         num_train_steps=30_000,
     ),
     TrainConfig(

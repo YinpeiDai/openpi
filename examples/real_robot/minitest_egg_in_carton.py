@@ -8,12 +8,13 @@ np.set_printoptions(precision=5, suppress=True)
 
 
 
-left_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples/left_shoulder_image_111.png"))
-right_shoulder_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples/right_shoulder_image_111.png"))
-wrist_image = np.array(PIL.Image.open("/home/daiyp/openpi/examples/real_robot/reticle_samples/wrist_image_111.png"))
-instruction = "put the tennis ball in the red bowl"
 
-state = [ 0.04678168, 0.3744241, -0.01841199, -1.66965973, -0.15927081, 2.10611606, 0.67752624, 0.63006682]
+left_shoulder_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_egg/left_shoulder_image_236.png"))
+right_shoulder_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_egg/right_shoulder_image_236.png"))
+wrist_image = np.array(PIL.Image.open("examples/real_robot/reticle_samples_egg/wrist_image_236.png"))
+instruction = "put the egg inside the egg carton"
+
+state = [-0.00725937,  0.13311845, -0.04766899, -2.08065104,  0.02973011,  2.02222753,  1.13670385,  0.88123362]
 state = np.array(state, dtype=np.float32)
 
 request_data = {
@@ -25,12 +26,12 @@ request_data = {
 }
 
 policy_client = websocket_client_policy.WebsocketClientPolicy(
-    host="141.212.115.116",
-    port=8001,
+    host="localhost",
+    port=8002,
 )
 tstart = time.time()
 pred_action_chunk = policy_client.infer(request_data)["actions"]
 tend = time.time()
 print(f"Time taken: {tend - tstart} seconds")
-print(pred_action_chunk[0]) #  [ 0.05286577  0.48139466 -0.06828832 -1.55042222 -0.13999516  2.03134505 0.68084685  1. ]
+print(pred_action_chunk[0]) # [-0.01511198  0.11611952 -0.05221765 -2.14998979  0.08095009  2.1068709 1.12064988  1.        ]
 print(pred_action_chunk.shape)

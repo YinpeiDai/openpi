@@ -1,5 +1,6 @@
 import dataclasses
 import logging
+from typing import Union
 
 import einops
 import flax.nnx as nnx
@@ -141,8 +142,40 @@ class Pi0Config(_model.BaseModelConfig):
         return nnx.All(*filters)
 
 
+class Pi0ConfigDepth(Pi0Config):
+    @override
+    def inputs_spec(self, *, batch_size: int = 1) -> tuple[_model.Observation, _model.Actions]:
+        image_spec = jax.ShapeDtypeStruct([batch_size, *_model.IMAGE_RESOLUTION, 3], jnp.float32)
+        image_mask_spec = jax.ShapeDtypeStruct([batch_size], jnp.bool_)
+
+        with at.disable_typechecking():
+            observation_spec = _model.Observation(
+                images={
+                    "base_0_rgb": image_spec,
+                    "left_wrist_0_rgb": image_spec,
+                    "right_wrist_0_rgb": image_spec,
+                    "base_0_depth": image_spec,
+                    "left_wrist_0_depth": image_spec,
+                    "right_wrist_0_depth": image_spec,
+                },
+                image_masks={
+                    "base_0_rgb": image_mask_spec,
+                    "left_wrist_0_rgb": image_mask_spec,
+                    "right_wrist_0_rgb": image_mask_spec,
+                    "base_0_depth": image_mask_spec,
+                    "left_wrist_0_depth": image_mask_spec,
+                    "right_wrist_0_depth": image_mask_spec,
+                },
+                state=jax.ShapeDtypeStruct([batch_size, self.action_dim], jnp.float32),
+                tokenized_prompt=jax.ShapeDtypeStruct([batch_size, self.max_token_len], jnp.int32),
+                tokenized_prompt_mask=jax.ShapeDtypeStruct([batch_size, self.max_token_len], bool),
+            )
+        action_spec = jax.ShapeDtypeStruct([batch_size, self.action_horizon, self.action_dim], jnp.float32)
+
+        return observation_spec, action_spec
+    
 class Pi0(_model.BaseModel):
-    def __init__(self, config: Pi0Config, rngs: nnx.Rngs):
+    def __init__(self, config: Union[Pi0Config, Pi0ConfigDepth], rngs: nnx.Rngs):
         super().__init__(config.action_dim, config.action_horizon, config.max_token_len)
         paligemma_config = _gemma.get_config(config.paligemma_variant)
         action_expert_config = _gemma.get_config(config.action_expert_variant)

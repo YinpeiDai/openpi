@@ -9,10 +9,17 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.analysis.extraPaths":[
+<<<<<<< HEAD
         "/home/daiyp/openpi/third_party/scopereticle/src",
         "/home/daiyp/openpi/third_party/libero",
         "/home/daiyp/openpi/third_party/PyRep",
         "/home/daiyp/openpi/third_party/RLBench",
         "/home/daiyp/openpi/third_party/YARR"
     ],
+=======
+        "/home/daiyp/openpi/third_party/libero",
+        "/home/daiyp/openpi/third_party/scopereticle/src"
+    ],
+    "git.ignoreLimitWarning": true
+>>>>>>> 7200963c1972700199011dbcea9904fc3d2f94ad
 }

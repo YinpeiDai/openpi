@@ -21,6 +21,11 @@ from crosshair.reticle_builder import ReticleBuilder
 from crosshair.config import CONFIG_DICT
 from robosuite.utils.camera_utils import get_camera_extrinsic_matrix, get_camera_intrinsic_matrix, get_real_depth_map
 
+from scipy.spatial.transform import Rotation as R
+
+RANDOM_NOISE = False
+NO_RETRICLE = False
+print("NO_RETRICLE:", NO_RETRICLE, "RANDOM_NOISE:", RANDOM_NOISE)
 
 LIBERO_DUMMY_ACTION = [0.0] * 6 + [-1.0]
 LIBERO_ENV_RESOLUTION = 256  # resolution used to render training data
@@ -36,7 +41,7 @@ class Args:
     #################################################################################################################
     # Model server parameters
     #################################################################################################################
-    host: str = "0.0.0.0"
+    host: str = "localhost"
     port: int = 8000
     resize_size: int = 224
     replan_steps: int = 5
@@ -119,13 +124,22 @@ def eval_libero(args: Args) -> None:
         
         if args.use_reticle:
             print(f"Using reticle with configuration key: {args.reticle_config_key}")
-            config = CONFIG_DICT[args.reticle_config_key]
+            if args.reticle_config_key == "large_crosshair_dynamic_default_color_no_grasp_sense":
+                config = CONFIG_DICT["large_crosshair_dynamic_default_color"]
+                args.use_grasp_sense = False
+            else:
+                config = CONFIG_DICT[args.reticle_config_key]
             shooting_line_config = config["shooting_line"]
             scope_reticle_config = config["scope_reticle"]
             MAX_EE_TABLE_DIST = 0.4 # change this to 0.2 when evaluating on large_crosshair_dynamic_default_color_tilt
             FIXCAM_TOLERANCE = 18
             WSTCAM_TOLERANCE = 12
-            scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
+                    
+            if hasattr(scope_reticle_config, "line_length_cfg"):
+                scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
+            
+            if hasattr(scope_reticle_config, "circle_radius_cfg"):
+                scope_reticle_config.circle_radius_cfg.maxdist = MAX_EE_TABLE_DIST
             
             if args.use_grasp_sense:
                 reticle_builder = ReticleBuilder(
@@ -215,7 +229,16 @@ def eval_libero(args: Args) -> None:
                                     gripper_qpos=deepcopy(obs["robot0_gripper_qpos"]),
                                 )
                                         
-                            else: 
+                            else:   
+                                if RANDOM_NOISE:
+                                    gripper_pos =  obs["robot0_eef_pos"] + np.random.uniform(-0.06, 0.06, 3)
+                                    # add random rotation
+                                    _quat = R.from_euler("xyz", np.random.uniform(-0.15, 0.15, 3), degrees=False) * R.from_quat(obs["robot0_eef_quat"])
+                                    gripper_quat = _quat.as_quat()
+                                else:
+                                    gripper_pos = deepcopy(obs["robot0_eef_pos"])
+                                    gripper_quat = deepcopy(obs["robot0_eef_quat"])
+                                    
                                 front_depth = np.flipud(obs["agentview_depth"]).squeeze()
                                 front_depth_real = get_real_depth_map(env.sim, front_depth)
                                 
@@ -224,8 +247,8 @@ def eval_libero(args: Args) -> None:
                                     camera_depth=front_depth_real,
                                     camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "agentview")),
                                     camera_intrinsics=get_camera_intrinsic_matrix(env.sim, "agentview", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_pos=gripper_pos,
+                                    gripper_quat=gripper_quat,
                                     gripper_open=is_open(obs["robot0_gripper_qpos"]),
                                     image_height=LIBERO_ENV_RESOLUTION,
                                     image_width=LIBERO_ENV_RESOLUTION,
@@ -235,18 +258,23 @@ def eval_libero(args: Args) -> None:
                                 wrist_depth = np.flipud(obs["robot0_eye_in_hand_depth"]).squeeze()
                                 wrist_depth_real = get_real_depth_map(env.sim, wrist_depth)
                                 
+                                
                                 robot0_eye_in_hand_rgb = reticle_builder.render_on_wst_camera(
                                     wrist_camera_rgb=np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8),
                                     wrist_camera_depth=wrist_depth_real,
                                     wrist_camera_extrinsics=np.linalg.inv(get_camera_extrinsic_matrix(env.sim, "robot0_eye_in_hand")),
                                     wrist_camera_intrinsics= get_camera_intrinsic_matrix(env.sim, "robot0_eye_in_hand", LIBERO_ENV_RESOLUTION, LIBERO_ENV_RESOLUTION),
-                                    gripper_pos=deepcopy(obs["robot0_eef_pos"]),
-                                    gripper_quat=deepcopy(obs["robot0_eef_quat"]),
+                                    gripper_pos=gripper_pos,
+                                    gripper_quat=gripper_quat,
                                     gripper_open=is_open(obs["robot0_gripper_qpos"]),
                                     image_height=LIBERO_ENV_RESOLUTION,
                                     image_width=LIBERO_ENV_RESOLUTION,
                                     tolerance=WSTCAM_TOLERANCE,
                                 )
+                                
+                                if NO_RETRICLE:
+                                    agentview_rgb = np.flipud(obs["agentview_image"]).astype(np.uint8)
+                                    robot0_eye_in_hand_rgb = np.flipud(obs["robot0_eye_in_hand_image"]).astype(np.uint8)
                                 
                             # agentview_rgb = agentview_rgb[:, ::-1]
                             # robot0_eye_in_hand_rgb = robot0_eye_in_hand_rgb[:, ::-1]

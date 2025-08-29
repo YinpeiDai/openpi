@@ -19,9 +19,6 @@ def print_structure(name, obj):
     elif isinstance(obj, h5py.Dataset):
         print(f"  Dataset: {name} | Shape: {obj.shape} | Dtype: {obj.dtype}")
 
-
-
-
 def is_noop(action, prev_action=None, threshold=1e-3, is_cartesian=False):
     """
     Returns whether an action is a no-op action.
@@ -65,14 +62,11 @@ def is_noop(action, prev_action=None, threshold=1e-3, is_cartesian=False):
     return np.linalg.norm(delta_action[:-1]) < threshold and gripper_action == prev_gripper_action
 
 
-def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real_data_pick_place_10demos", use_reticle: bool = False):
+def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "realrobot_alltask_depth"):
     # Clean up any existing dataset in the output directory
     output_path = LEROBOT_HOME / repo_id
     if output_path.exists():
         shutil.rmtree(output_path)
-        
-    if use_reticle:
-        print("Using reticle images")
 
     # Create LeRobot dataset, define features to store
     # OpenPi assumes that proprio is stored in `state` and actions in `action`
@@ -93,6 +87,21 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
                 "names": ["height", "width", "channel"],
             },
             "wrist_image": {
+                "dtype": "image",
+                "shape": (256, 256, 3),
+                "names": ["height", "width", "channel"],
+            },
+            "left_shoulder_depth": {
+                "dtype": "image",
+                "shape": (256, 256, 3),
+                "names": ["height", "width", "channel"],
+            },
+            "right_shoulder_depth": {
+                "dtype": "image",
+                "shape": (256, 256, 3),
+                "names": ["height", "width", "channel"],
+            },
+            "wrist_depth": {
                 "dtype": "image",
                 "shape": (256, 256, 3),
                 "names": ["height", "width", "channel"],
@@ -121,9 +130,14 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
         image_writer_threads=10,
         image_writer_processes=5,
     )
-
     
-    for hdf5_file in Path(data_dir).glob("*.hdf5"):                
+    # find all hdf5 files in the data_dir, recursively
+    hdf5_files = list(Path(data_dir).glob("**/*.hdf5")) 
+    exclude_dirs = ["tennis_ball_in_bowl", "play", "v2"]
+    hdf5_files = [file for file in hdf5_files if not any(exclude_dir in str(file) for exclude_dir in exclude_dirs)]
+    
+    for hdf5_file in hdf5_files:
+        print(hdf5_file)
         data = h5py.File(hdf5_file, 'r')
         language_instruction = hdf5_file.name.split("-")[0].replace("_", " ")
         print(language_instruction)
@@ -140,14 +154,14 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
         prev_cartesian_actions = None
         
         
-        if use_reticle:
-            left_shoulder_image = data["observation/camera_rgb_reticle/left_shoulder"]
-            right_shoulder_image = data["observation/camera_rgb_reticle/right_shoulder"]
-            wrist_image = data["observation/camera_rgb_reticle/wrist"]
-        else:
-            left_shoulder_image = data["observation/camera_rgb/left_shoulder"]
-            right_shoulder_image = data["observation/camera_rgb/right_shoulder"]
-            wrist_image = data["observation/camera_rgb/wrist"]
+        left_shoulder_image = data["observation/camera_rgb/left_shoulder"]
+        right_shoulder_image = data["observation/camera_rgb/right_shoulder"]
+        wrist_image = data["observation/camera_rgb/wrist"]
+        
+        left_shoulder_depth = data["observation/camera_depth/left_shoulder"]
+        right_shoulder_depth = data["observation/camera_depth/right_shoulder"]
+        wrist_depth = data["observation/camera_depth/wrist"]
+        
 
         length = len(action_joint_position)
         
@@ -169,11 +183,37 @@ def main(data_dir: str = "/data/daiyp/crosshair/real_data", repo_id: str = "real
                 print("noop, skipping")
                 continue
             
+            left_shoulder_depth_image = left_shoulder_depth[idx]
+            right_shoulder_depth_image = right_shoulder_depth[idx]
+            wrist_depth_image = wrist_depth[idx]
+            
+            # convert depth to gray rgb image 
+            left_shoulder_depth_image = np.repeat(left_shoulder_depth_image[:, :, np.newaxis], 3, axis=2)
+            right_shoulder_depth_image = np.repeat(right_shoulder_depth_image[:, :, np.newaxis], 3, axis=2)
+            wrist_depth_image = np.repeat(wrist_depth_image[:, :, np.newaxis], 3, axis=2)
+            
+            left_shoulder_depth_image = (left_shoulder_depth_image - np.min(left_shoulder_depth_image)) / (min(np.max(left_shoulder_depth_image),3) - np.min(left_shoulder_depth_image))
+            right_shoulder_depth_image = (right_shoulder_depth_image - np.min(right_shoulder_depth_image)) / (min(np.max(right_shoulder_depth_image),3) - np.min(right_shoulder_depth_image))
+            wrist_depth_image = (wrist_depth_image - np.min(wrist_depth_image)) / (min(np.max(wrist_depth_image),3) - np.min(wrist_depth_image))
+            
+            left_shoulder_depth_image = (left_shoulder_depth_image * 255).astype(np.uint8)
+            right_shoulder_depth_image = (right_shoulder_depth_image * 255).astype(np.uint8)
+            wrist_depth_image = (wrist_depth_image * 255).astype(np.uint8)
+            
+            # from PIL import Image
+            # Image.fromarray(left_shoulder_depth_image).save(f"left_shoulder_depth_image.png")
+            # Image.fromarray(right_shoulder_depth_image).save(f"right_shoulder_depth_image.png")
+            # Image.fromarray(wrist_depth_image).save(f"wrist_depth_image.png")
+            # input("...")
+            
             dataset.add_frame(
                 {
                     "left_shoulder_image": left_shoulder_image[idx],
                     "right_shoulder_image": right_shoulder_image[idx],
                     "wrist_image": wrist_image[idx],
+                    "left_shoulder_depth": left_shoulder_depth_image,
+                    "right_shoulder_depth": right_shoulder_depth_image,
+                    "wrist_depth": wrist_depth_image,
                     "state": joint_states.astype(np.float32),
                     "actions": joint_actions.astype(np.float32),
                     # "cartesian_states": cartesian_states.astype(np.float32),
