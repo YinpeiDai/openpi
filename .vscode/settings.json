@@ -7,5 +7,12 @@
         "src"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.analysis.extraPaths":[
+        "/home/daiyp/openpi/third_party/scopereticle/src",
+        "/home/daiyp/openpi/third_party/libero",
+        "/home/daiyp/openpi/third_party/PyRep",
+        "/home/daiyp/openpi/third_party/RLBench",
+        "/home/daiyp/openpi/third_party/YARR"
+    ],
 }
