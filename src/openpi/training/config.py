@@ -329,6 +329,7 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
             repack_transforms=repack_transform,
             data_transforms=data_transforms,
             model_transforms=model_transforms,
+            use_quantile_norm=model_config.model_type == ModelType.PI0_FAST,
         )
         
 
@@ -581,6 +582,7 @@ _CONFIGS = [
             base_config=DataConfig(
                 local_files_only=True,
                 prompt_from_task=True,
+                use_quantile_norm=True,
             ),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
@@ -596,6 +598,7 @@ _CONFIGS = [
             base_config=DataConfig(
                 local_files_only=True,
                 prompt_from_task=True,
+                use_quantile_norm=True,
             ),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=20_000, decay_lr=1e-6),
@@ -667,6 +670,7 @@ _CONFIGS = [
         # Below you can define other hyperparameters like the learning rate, number of training steps, etc.
         # Check the base TrainConfig class for a full list of available hyperparameters.
         num_train_steps=30_000,
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=30_000, decay_lr=1e-6),
     ),
     TrainConfig(
         name="pi0_libero_low_mem_finetune",
@@ -709,8 +713,10 @@ _CONFIGS = [
             base_config=DataConfig(
                 local_files_only=False,  # Set to True for local-only datasets.
                 prompt_from_task=True,
+                use_quantile_norm=True
             ),
         ),
+        lr_schedule=_optimizer.CosineDecaySchedule(peak_lr=1e-5, decay_steps=30_000, decay_lr=1e-6),
         # Note that we load the pi0-FAST base model checkpoint here.
         weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_fast_base/params"),
         num_train_steps=30_000,

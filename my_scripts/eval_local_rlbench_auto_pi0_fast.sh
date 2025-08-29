@@ -1,18 +1,16 @@
 cd /home/daiyp/openpi
 
 
-# stack_blocks,open_drawer
-# stack_cups,light_bulb_in,meat_off_grill
-# insert_onto_square_peg,close_jar,push_buttons
+# open_drawer,close_jar,insert_onto_square_peg,stack_cups
 
-TASK_NAME=insert_onto_square_peg,close_jar,push_buttons
-MODEL_NAME=pi0_fast_rlbench_ckpt20000
+TASK_NAME=open_drawer
+MODEL_NAME=pi0_fast_rlbench_grpsen_joinpos_ckpt15000
 DEVICE=1
 PORT=8003
-CKPT_DIR=/home/daiyp/openpi/runs/ckpts/pi0_fast_libero/pi0_fast_rlbench/20000
+CKPT_DIR=/home/daiyp/openpi/runs/ckpts/pi0_fast_rlbench/pi0_fast_rlbench_grpsen_joinpos/15000
 USE_RETICLE=0
 RETICLE_CFG=large_crosshair_dynamic_default_color
-APPLY_DELTA=0
+APPLY_DELTA=1
 lerobot_repo_id=rlbench
 
 SESSION_NAME="Eval-Pi0fast-${MODEL_NAME}-${TASK_NAME}"

@@ -8,8 +8,8 @@ job_script = """#!/bin/bash
 #SBATCH --job-name=eval_{model_name}
 #SBATCH --output=/home/daiyp/openpi/runs/logs/eval_{model_name}_{task_suite_name}-task{task_start_id}_{task_end_id}-port{port}-%j.out
 #SBATCH --gres=gpu:1
-#SBATCH --time=10:00:00
-#SBATCH --account=nfz0
+#SBATCH --time=2-00:00:00
+#SBATCH --account=chaijy2
 #SBATCH --partition=spgpu
 #SBATCH --mem-per-gpu=46G
 #SBATCH --cpus-per-task=2
@@ -17,6 +17,8 @@ job_script = """#!/bin/bash
 #SBATCH --nodes=1
 
 cd /home/daiyp/openpi
+
+module load tmux/3.3a
 
 SESSION_NAME="Eval-{model_name}-{task_suite_name}-task{task_start_id}_{task_end_id}_{port}"
 
@@ -45,17 +47,17 @@ export PYTHONPATH=$PYTHONPATH:$PWD/third_party/scopereticle/src
 /nfs/turbo/coe-chaijy/daiyp/micromamba_gl/envs/openpi-libero/bin/python  examples/libero/run_libero_eval_batch.py  --model-name {model_name} --task_suite_name {task_suite_name}  --port {port} --task_start_id {task_start_id} --task_end_id {task_end_id}"""
 
 # Evaluate on 10 tasks
-model_type = "pi0_libero"
-model_name = f"{model_type}_large_crosshair_dynamic_default_color_grpsen_ckpt30000"
+model_type = "pi0_fast_libero"
+model_name = "pi0-fast-libero-large_crosshair_dynamic_default_color_new-rerun-ckpt20k"
 policy_config = model_type
-ckpt_dir=f"/home/daiyp/openpi/runs/ckpts/{model_type}/pi0_libero_large_crosshair_dynamic_default_color_grpsen/30000"
-port_base=8200 # !!!!!!
+ckpt_dir="/home/daiyp/openpi/runs/ckpts/pi0_fast_libero/pi0-fast-libero-large_crosshair_dynamic_default_color_new-rerun/20000"
+port_base=8300 # !!!!!!
 use_reticle=1
-reticle_cfg="large_crosshair_dynamic_default_color" 
-lerobot_repo_id="libero_large_crosshair_dynamic_default_color_grpsen"
+reticle_cfg="large_crosshair_dynamic_default_color"
+lerobot_repo_id="large_crosshair_dynamic_default_color_new"
 apply_delta=False #!!!!!!
 
-use_grasp_sense=True
+use_grasp_sense=False
 if use_grasp_sense:
     use_grasp_sense_cmd = " --use_grasp_sense"
 else:
@@ -74,9 +76,9 @@ for task_suite_name in [
     "libero_goal", 
     "libero_10"
     ]:
-    for task_start_id in range(0, 10):
+    for task_start_id in range(0, 1):
         port += 1
-        task_end_id = task_start_id + 1
+        task_end_id = 10 #task_start_id + 1
         if use_reticle:
             print(f"Eval {policy_config}: \n  Submitting tasks using task suite [{task_suite_name}], port={port}\n  model {model_name} \n  with reticle_config '{reticle_cfg}' \n  apply_delta={apply_delta}")
             script = job_script.format(model_name=model_name, task_suite_name=task_suite_name, ckpt_dir=ckpt_dir, policy_config=policy_config, task_start_id=task_start_id, task_end_id=task_end_id, lerobot_repo_id=lerobot_repo_id, port=port, apply_delta_cmd=apply_delta_cmd) + \

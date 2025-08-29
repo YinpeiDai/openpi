@@ -2,7 +2,7 @@
 
 cd /home/daiyp/openpi
 
-MODEL_NAME=pi0_libero_large_crosshair_dynamic_default_color_grpsen_ckpt30000_v2
+MODEL_NAME=pi0_libero_large_crosshair_dynamic_default_color_grpsen_ckpt30000_orinormstats
 DEVICE=3
 PORT=8004
 CKPT_DIR=/home/daiyp/openpi/runs/ckpts/pi0_libero/pi0_libero_large_crosshair_dynamic_default_color_grpsen/30000

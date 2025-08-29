@@ -20,6 +20,7 @@ source examples/rlbench/setup_bash.sh
 uv pip install -e packages/openpi-client
 uv pip install -e  third_party/RLBench/
 uv pip install -e  third_party/YARR/
+uv pip install cffi==1.14.2
 uv pip install -e  third_party/PyRep/
 uv pip install -e  third_party/scopereticle/
 

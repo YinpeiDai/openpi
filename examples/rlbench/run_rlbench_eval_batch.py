@@ -50,12 +50,8 @@ RLBENCH_ENV_RESOLUTION = 256  # resolution used to render training data
 
 RLBENCH_TASKS = [
     "open_drawer",
-    "push_buttons",
     "close_jar",
-    "stack_blocks",
-    "light_bulb_in",
     "insert_onto_square_peg",
-    "meat_off_grill",
     "stack_cups",
 ]
 
@@ -86,7 +82,7 @@ class Args:
     save_video_num: int = 25  # Number of videos to save per task
     
     use_reticle: bool = False  # Use reticle in the environment
-    reticle_config_key: str = "large_crosshair_dynamic_default_color"  # Reticle configuration key
+    reticle_config_key: str = "large_crosshair_dynamic_default_color"  # Reticle configuration key    
 
 def extract(transition):
     obs = transition.info["obs"]
@@ -136,6 +132,11 @@ def eval_rlbench(args: Args) -> None:
         raise ValueError(f"Unknown task: {args.task_name}")
     
     print("Task list: ", task_name_list)
+    
+    print(f"connected to {args.host}:{args.port}")
+    client = _websocket_client_policy.WebsocketClientPolicy(args.host, args.port)
+
+
     for task_name in task_name_list:
         save_dir = os.path.join(args.save_path, task_name, args.model_name)
         os.makedirs(save_dir, exist_ok=True)
@@ -163,8 +164,6 @@ def eval_rlbench(args: Args) -> None:
             raise ValueError(f"Unknown task: {task_name}")
 
 
-        print(f"connected to {args.host}:{args.port}")
-        client = _websocket_client_policy.WebsocketClientPolicy(args.host, args.port)
 
         print(f"Eval task name: {task_name }")        
         
@@ -173,8 +172,8 @@ def eval_rlbench(args: Args) -> None:
             config = CONFIG_DICT[args.reticle_config_key]
             shooting_line_config = config["shooting_line"]
             scope_reticle_config = config["scope_reticle"]
-            MAX_EE_TABLE_DIST = 0.4
-            FIXCAM_TOLERANCE = 18
+            MAX_EE_TABLE_DIST = 0.7
+            FIXCAM_TOLERANCE = 12
             WSTCAM_TOLERANCE = 12
             scope_reticle_config.line_length_cfg.maxdist = MAX_EE_TABLE_DIST
             reticle_builder = ReticleBuilder(
